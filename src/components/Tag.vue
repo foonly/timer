@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { timerTag } from "../types";
+import type { fhtTag } from "../types";
 
-defineProps<{ tag: timerTag }>();
+defineProps<{ tag: fhtTag }>();
 </script>
 
 <template>
@@ -15,9 +15,9 @@ defineProps<{ tag: timerTag }>();
 <style scoped>
 .tag {
   margin-top: 0.5rem;
-  border: 1px solid rgba(30, 30, 30, 0.6);
+  border: 1px solid var(--fht-element-border-color);
   border-radius: 0.5rem;
-  background-color: rgba(60, 60, 60, 0.6);
+  background-color: var(--fht-element-background-color);
   padding: 8px;
 
   &:hover {

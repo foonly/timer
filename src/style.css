@@ -1,9 +1,41 @@
 :root {
-  background-color: rgb(20, 20, 20);
-  color: rgb(200, 200, 200);
+  --fht-background-color: rgb(20, 20, 20);
+  --fht-text-color: rgb(200, 200, 200);
+  --fht-element-background-color: rgba(60, 60, 60, 0.6);
+  --fht-element-border-color: rgba(30, 30, 30, 0.6);
+
+  --fht-border-radius: 1rem;
+  --fht-button-border-radius: 0.33rem;
 
   @media (prefers-color-scheme: light) {
-    background-color: rgb(200, 200, 200);
-    color: rgb(20, 20, 20);
+    --fht-background-color: rgb(200, 200, 200);
+    --fht-text-color: rgb(20, 20, 20);
   }
+
+  background-color: var(--fht-background-color);
+  color: var(--fht-text-color);
+}
+
+input,
+textarea,
+button {
+  background-color: rgba(100, 100, 100, 0.3);
+  color: inherit;
+  font-family: unset;
+  border: 0;
+  padding: 0.25rem;
+  box-sizing: border-box;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  border-radius: var(--fht-button-border-radius);
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+h2 {
+  font-size: 1.4rem;
 }

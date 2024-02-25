@@ -1,26 +1,28 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
-import { timerTag } from "./types";
+import { ref } from "vue";
+import { fhtTag } from "./types";
 
 export const useTimerStore = defineStore(
   "timer",
   () => {
-    const count = ref(0);
-    const tags = ref([] as timerTag[]);
+    const tags = ref([] as fhtTag[]);
+    const modal = ref("");
 
     // Getters
-    const rootTags = computed<timerTag[]>(() =>
-      tags.value.filter((tag) => {
-        return tag.name.indexOf("//") === -1;
-      })
-    );
-    const getTags = (parentTag: string): timerTag[] => {
+    const getTags = (parentTag: string): fhtTag[] => {
       return tags.value.filter((tag) => {
         return tag.parent === parentTag;
       });
     };
+    const removeTag = (remove: string) => {
+      tags.value = tags.value.filter((tag) => {
+        const id = `${tag.parent}//${tag.name}`;
+        return !id.startsWith(remove);
+      });
+      modal.value = "";
+    };
 
-    return { count, tags, rootTags, getTags };
+    return { tags, modal, getTags, removeTag };
   },
   { persist: true }
 );

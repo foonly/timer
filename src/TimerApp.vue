@@ -3,33 +3,23 @@ import { useTimerStore } from "./timerStore";
 import Tags from "./components/Tags.vue";
 
 const store = useTimerStore();
-store.tags = [
-  { name: "root", parent: "", description: "Root tag" },
-  { name: "project", parent: "//root", description: "Test Project" },
-  { name: "task 1", parent: "//root//project", description: "First task" },
-  { name: "task 2", parent: "//root//project", description: "Second task" },
-  { name: "project 2", parent: "//root", description: "Test Project" },
-  { name: "task 1", parent: "//root//project 2", description: "First task" },
-  { name: "task 2", parent: "//root//project 2", description: "Second task" },
-  { name: "foo", parent: "", description: "Root tag" },
-  { name: "project", parent: "//foo", description: "Test Project" },
-  { name: "task 1", parent: "//foo//project", description: "First task" },
-  { name: "task 2", parent: "//foo//project", description: "Second task" },
-];
 </script>
 
 <template>
-  <div>Foobar</div>
+  <h1>Foonlys Hierarchical Timer</h1>
   <section class="tags">
+    <button class="add-tag" @click="store.modal = 'add-tag:'">Add Tag</button>
     <Tags parent="" />
   </section>
-  <button class="" v-on:click="store.count++">Count {{ store.count }}</button>
 </template>
 
 <style scoped>
+h1 {
+  text-align: center;
+}
 .tags {
   padding: 1rem;
-  max-width: 300px;
+  max-width: 500px;
 }
 button {
   border: 2px solid rgb(60, 60, 60);
