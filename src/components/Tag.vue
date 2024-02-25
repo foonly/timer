@@ -5,8 +5,23 @@ defineProps<{ tag: timerTag }>();
 </script>
 
 <template>
-  <div>{{ tag.name }}</div>
-  <p>{{ tag.description }}</p>
+  <div class="tag">
+    <h2>{{ tag.name }}</h2>
+    <p>{{ tag.description }}</p>
+    <slot></slot>
+  </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.tag {
+  margin-top: 0.5rem;
+  border: 1px solid rgba(30, 30, 30, 0.6);
+  border-radius: 0.5rem;
+  background-color: rgba(60, 60, 60, 0.6);
+  padding: 8px;
+
+  &:hover {
+    background-color: rgba(60, 60, 60, 0.8);
+  }
+}
+</style>
