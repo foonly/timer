@@ -1,28 +1,39 @@
 <script setup lang="ts">
 import { useTimerStore } from "./timerStore";
-import Tags from "./components/Tags.vue";
+import ListTags from "./components/ListTags.vue";
+import DarkLight from "./assets/dark-light.svg";
+import { toggleDarkLightMode } from "./darkLight";
+import Plus from "./assets/plus.svg";
 
 const store = useTimerStore();
 </script>
 
 <template>
-  <h1>Foonlys Hierarchical Timer</h1>
-  <section class="tags">
-    <button class="add-tag" @click="store.modal = 'add-tag:'">Add Tag</button>
-    <Tags parent="" />
-  </section>
+  <div class="app-root">
+    <DarkLight class="icon clickable dark-light" @click="toggleDarkLightMode" />
+    <h1>Foonlys Hierarchical Timer</h1>
+    <main id="main-grid">
+      <section id="tags-section">
+        <ListTags parent="" />
+        <Plus class="icon clickable" @click="store.modal = 'add-tag:'" />
+      </section>
+      <section id="timer-section">Foo</section>
+    </main>
+  </div>
 </template>
 
 <style scoped>
 h1 {
   text-align: center;
 }
-.tags {
-  padding: 1rem;
-  max-width: 500px;
+.dark-light {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  opacity: 0.5;
 }
-button {
-  border: 2px solid rgb(60, 60, 60);
-  border-radius: 8px;
+#main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 </style>

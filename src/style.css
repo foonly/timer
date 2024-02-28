@@ -7,19 +7,27 @@
   --fht-border-radius: 1rem;
   --fht-button-border-radius: 0.33rem;
 
-  @media (prefers-color-scheme: light) {
+  background-color: var(--fht-background-color);
+  color: var(--fht-text-color);
+}
+
+html {
+  color-scheme: dark light;
+
+  &[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  &[data-theme="light"] {
+    color-scheme: light;
     --fht-background-color: rgb(200, 200, 200);
     --fht-text-color: rgb(20, 20, 20);
   }
-
-  background-color: var(--fht-background-color);
-  color: var(--fht-text-color);
 }
 
 input,
 textarea,
 button {
-  background-color: rgba(100, 100, 100, 0.3);
   color: inherit;
   font-family: unset;
   border: 0;
@@ -38,4 +46,20 @@ h1 {
 }
 h2 {
   font-size: 1.4rem;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.clickable {
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.5;
+
+  &:hover {
+    opacity: 1;
+  }
 }

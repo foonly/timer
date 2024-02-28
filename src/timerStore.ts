@@ -1,14 +1,15 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { fhtTag } from "./types";
+import { modalName } from "./helpers";
 
 export const useTimerStore = defineStore(
   "timer",
   () => {
-    const tags = ref([] as fhtTag[]);
+    const tags = ref(<fhtTag[]>[]);
     const modal = ref("");
 
-    // Getters
+    // Actions
     const getTags = (parentTag: string): fhtTag[] => {
       return tags.value.filter((tag) => {
         return tag.parent === parentTag;
@@ -21,8 +22,17 @@ export const useTimerStore = defineStore(
       });
       modal.value = "";
     };
+    const openModal = (id: string, ...name: string[]) => {
+      modal.value = modalName(id, ...name);
+    };
+    const closeModal = () => {
+      modal.value = "";
+    };
+    const isModal = (id: string, ...name: string[]) => {
+      return modal.value === modalName(id, ...name);
+    };
 
-    return { tags, modal, getTags, removeTag };
+    return { tags, modal, getTags, removeTag, openModal, closeModal, isModal };
   },
-  { persist: true }
+  { persist: true },
 );

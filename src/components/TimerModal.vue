@@ -26,11 +26,11 @@ const store = useTimerStore();
   align-items: center;
   align-content: center;
   justify-content: center;
+  z-index: 3;
 
   .modal {
     min-width: 400px;
     min-height: 400px;
-    background-color: antiquewhite;
     border-radius: var(--fht-border-radius);
     background-color: var(--fht-element-background-color);
     border: 2px solid var(--fht-element-border-color);
