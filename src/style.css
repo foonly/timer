@@ -4,7 +4,7 @@
   --fht-element-background-color: rgba(60, 60, 60, 0.6);
   --fht-element-border-color: rgba(30, 30, 30, 0.6);
 
-  --fht-border-radius: 1rem;
+  --fht-border-radius: 0.5rem;
   --fht-button-border-radius: 0.33rem;
 
   background-color: var(--fht-background-color);

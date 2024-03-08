@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTimerStore } from "./timerStore";
 import ListTags from "./components/ListTags.vue";
+import ListTimers from "./components/ListTimers.vue";
 import DarkLight from "./assets/dark-light.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import Plus from "./assets/plus.svg";
@@ -17,7 +18,9 @@ const store = useTimerStore();
         <ListTags parent="" />
         <Plus class="icon clickable" @click="store.modal = 'add-tag:'" />
       </section>
-      <section id="timer-section">Foo</section>
+      <section id="timer-section">
+        <ListTimers />
+      </section>
     </main>
   </div>
 </template>
