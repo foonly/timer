@@ -2,6 +2,7 @@
 import { useTimerStore } from "../timerStore";
 import type { fhtTimer } from "../types";
 import TimerName from "./TimerName.vue";
+import TimeDisplay from "./TimeDisplay.vue";
 const store = useTimerStore();
 defineProps<{ timer: fhtTimer }>();
 </script>
@@ -9,7 +10,7 @@ defineProps<{ timer: fhtTimer }>();
 <template>
   <div class="timer">
     <TimerName :name="timer.id" />
-    <div>{{ store.now - timer.start }}</div>
+    <TimeDisplay :time="store.now - timer.start" />
   </div>
 </template>
 
