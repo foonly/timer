@@ -4,18 +4,22 @@ import Trash from "../assets/trash.svg";
 import Play from "../assets/play.svg";
 import { useTimerStore } from "../timerStore";
 import TimerModal from "./TimerModal.vue";
+import TimeDisplay from "./TimeDisplay.vue";
 
 const store = useTimerStore();
 
-defineProps<{ tag: fhtTag }>();
+const props = defineProps<{ tag: fhtTag }>();
+
+const id = `${props.tag.parent}//${props.tag.name}`;
 </script>
 
 <template>
   <div class="tag">
-    <Play class="icon clickable" @click="store.startTimer(`${tag.parent}//${tag.name}`)" />
+    <Play class="icon clickable" @click="store.startTimer(id)" />
     <Trash class="icon clickable" @click="store.openModal('remove-tag', tag.parent, tag.name)" />
     <h2>{{ tag.name }}</h2>
     <p>{{ tag.description }}</p>
+    <TimeDisplay :time="store.getTime(id)" />
     <slot></slot>
 
     <TimerModal v-if="store.isModal('remove-tag', tag.parent, tag.name)" title="Are you sure?">

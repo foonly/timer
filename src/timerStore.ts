@@ -40,6 +40,41 @@ export const useTimerStore = defineStore(
         start: Date.now(),
       });
       timers.value.push(timer);
+      now.value = Date.now();
+    };
+    const stopTimer = (id: string, positive = true) => {
+      for (const timer of timers.value) {
+        if (timer.id === id && timer.positive === positive && timer.end === 0) {
+          timer.end = Date.now();
+        }
+      }
+    };
+    const getTime = (id: string) => {
+      const records: Array<{ start: number; end: number }> = [];
+      for (const timer of timers.value.sort((a, b) => a.start - b.start)) {
+        if (timer.positive && timer.id.startsWith(id)) {
+          const start = timer.start;
+          const end = timer.end > 0 ? timer.end : now.value;
+          let push = true;
+          for (const r of records) {
+            if (start < r.end) {
+              if (end > r.end) {
+                r.end = end;
+              }
+              push = false;
+              break;
+            }
+          }
+          if (push) {
+            records.push({ start, end });
+          }
+        }
+      }
+      let time = 0;
+      for (const r of records) {
+        time += r.end - r.start;
+      }
+      return time;
     };
 
     return {
@@ -53,6 +88,8 @@ export const useTimerStore = defineStore(
       closeModal,
       isModal,
       startTimer,
+      stopTimer,
+      getTime,
     };
   },
   {

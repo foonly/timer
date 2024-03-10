@@ -6,7 +6,6 @@ const store = useTimerStore();
 
 <template>
   <div class="timers">
-    {{ store.now }}
     <TimerItem v-for="timer in store.timers" :timer="timer" :key="timer.id" />
   </div>
 </template>
