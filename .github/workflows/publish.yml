@@ -31,3 +31,13 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          name: id_ed25519
+          known_hosts: ${{ secrets.CLOUDBERRY_HOSTS }}
+
+      - name: Deploy Dist
+        run: rsync -rlci --delete dist webmaster@cloudberry.uplink.fi:/var/www/timer/
