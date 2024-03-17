@@ -56,7 +56,7 @@ export const useTimerStore = defineStore(
         }
       }
       return false;
-    }
+    };
     const getTime = (id: string) => {
       const records: Array<{ start: number; end: number }> = [];
       for (const timer of timers.value.sort((a, b) => a.start - b.start)) {
