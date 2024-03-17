@@ -30,7 +30,7 @@ const resetForm = () => {
 </script>
 
 <template>
-  <div class="tags">
+  <div id="tags">
     <TagItem v-for="tag in store.getTags(props.parent)" :tag="tag" :key="tag.name">
       <ListTags :parent="tag.parent + '//' + tag.name" />
       <Plus class="icon clickable" @click="store.openModal('add-tag', tag.parent, tag.name)" />

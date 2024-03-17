@@ -18,9 +18,7 @@ const store = useTimerStore();
         <ListTags parent="" />
         <Plus class="icon clickable" @click="store.modal = 'add-tag:'" />
       </section>
-      <section id="timer-section">
-        <ListTimers />
-      </section>
+      <ListTimers />
     </main>
   </div>
 </template>
@@ -28,6 +26,8 @@ const store = useTimerStore();
 <style scoped>
 h1 {
   text-align: center;
+  margin-left: 3rem;
+  margin-right: 3rem;
 }
 .dark-light {
   position: absolute;

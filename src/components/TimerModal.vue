@@ -34,14 +34,15 @@ const store = useTimerStore();
     border-radius: var(--fht-border-radius);
     background-color: var(--fht-element-background-color);
     border: 2px solid var(--fht-element-border-color);
+    padding: 0.5rem;
 
     h2 {
-      margin-top: 0;
       border-top-left-radius: var(--fht-border-radius);
       border-top-right-radius: var(--fht-border-radius);
       background-color: rgba(10, 10, 10, 0.5);
       padding: 0.5rem 1rem;
-      margin-bottom: 0;
+      margin: -0.5rem;
+      margin-bottom: 0.5rem;
     }
   }
 }

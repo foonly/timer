@@ -1,8 +1,8 @@
 :root {
   --fht-background-color: rgb(20, 20, 20);
   --fht-text-color: rgb(200, 200, 200);
-  --fht-element-background-color: rgba(60, 60, 60, 0.4);
-  --fht-element-border-color: rgba(30, 30, 30, 0.4);
+  --fht-element-background-color: rgba(40, 40, 40);
+  --fht-element-border-color: rgba(20, 20, 20);
 
   --fht-border-radius: 0.5rem;
   --fht-button-border-radius: 0.33rem;
@@ -22,6 +22,8 @@ html {
     color-scheme: light;
     --fht-background-color: rgb(200, 200, 200);
     --fht-text-color: rgb(20, 20, 20);
+    --fht-element-background-color: rgba(180, 180, 180);
+    --fht-element-border-color: rgba(120, 120, 120);
   }
 }
 
@@ -29,11 +31,21 @@ html {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
+  grid-template-areas:
+    "timers"
+    "tags";
   gap: 1rem;
 
   @media screen and (min-width: 600px) {
     grid-template-columns: 1fr 1fr;
+    grid-template-areas: "tags timers";
   }
+}
+#tags-section {
+  grid-area: tags;
+}
+#timer-section {
+  grid-area: timers;
 }
 
 input,
@@ -81,4 +93,5 @@ h2 {
   border: 1px solid var(--fht-element-border-color);
   border-radius: var(--fht-border-radius);
   background-color: var(--fht-element-background-color);
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
 }

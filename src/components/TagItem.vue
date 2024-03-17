@@ -35,10 +35,8 @@ const id = `${props.tag.parent}//${props.tag.name}`;
 </template>
 
 <style scoped>
-.tag {
-  & .icon {
-    margin: 1ch;
-    float: right;
-  }
+.icon {
+  margin: 0.3rem;
+  float: right;
 }
 </style>
