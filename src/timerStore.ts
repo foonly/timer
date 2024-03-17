@@ -49,6 +49,14 @@ export const useTimerStore = defineStore(
         }
       }
     };
+    const isRunning = (id: string, positive = true) => {
+      for (const timer of timers.value) {
+        if (timer.id === id && timer.positive === positive && timer.end === 0) {
+          return true;
+        }
+      }
+      return false;
+    }
     const getTime = (id: string) => {
       const records: Array<{ start: number; end: number }> = [];
       for (const timer of timers.value.sort((a, b) => a.start - b.start)) {
@@ -89,6 +97,7 @@ export const useTimerStore = defineStore(
       isModal,
       startTimer,
       stopTimer,
+      isRunning,
       getTime,
     };
   },

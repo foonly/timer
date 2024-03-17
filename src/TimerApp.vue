@@ -35,8 +35,4 @@ h1 {
   top: 1rem;
   opacity: 0.5;
 }
-#main-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
 </style>

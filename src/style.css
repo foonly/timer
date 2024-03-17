@@ -1,8 +1,8 @@
 :root {
   --fht-background-color: rgb(20, 20, 20);
   --fht-text-color: rgb(200, 200, 200);
-  --fht-element-background-color: rgba(60, 60, 60, 0.6);
-  --fht-element-border-color: rgba(30, 30, 30, 0.6);
+  --fht-element-background-color: rgba(60, 60, 60, 0.4);
+  --fht-element-border-color: rgba(30, 30, 30, 0.4);
 
   --fht-border-radius: 0.5rem;
   --fht-button-border-radius: 0.33rem;
@@ -22,6 +22,17 @@ html {
     color-scheme: light;
     --fht-background-color: rgb(200, 200, 200);
     --fht-text-color: rgb(20, 20, 20);
+  }
+}
+
+#main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  gap: 1rem;
+
+  @media screen and (min-width: 600px) {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -62,4 +73,12 @@ h2 {
   &:hover {
     opacity: 1;
   }
+}
+
+.card {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--fht-element-border-color);
+  border-radius: var(--fht-border-radius);
+  background-color: var(--fht-element-background-color);
 }

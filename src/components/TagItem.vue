@@ -2,6 +2,7 @@
 import type { fhtTag } from "../types";
 import Trash from "../assets/trash.svg";
 import Play from "../assets/play.svg";
+import Stop from "../assets/stop.svg";
 import { useTimerStore } from "../timerStore";
 import TimerModal from "./TimerModal.vue";
 import TimeDisplay from "./TimeDisplay.vue";
@@ -14,8 +15,9 @@ const id = `${props.tag.parent}//${props.tag.name}`;
 </script>
 
 <template>
-  <div class="tag">
-    <Play class="icon clickable" @click="store.startTimer(id)" />
+  <div class="tag card">
+    <Play class="icon clickable" @click="store.startTimer(id)" v-if="!store.isRunning(id)" />
+    <Stop class="icon clickable" @click="store.stopTimer(id)" v-else />
     <Trash class="icon clickable" @click="store.openModal('remove-tag', tag.parent, tag.name)" />
     <h2>{{ tag.name }}</h2>
     <p>{{ tag.description }}</p>
@@ -34,19 +36,9 @@ const id = `${props.tag.parent}//${props.tag.name}`;
 
 <style scoped>
 .tag {
-  margin-top: 0.5rem;
-  border: 1px solid var(--fht-element-border-color);
-  border-radius: var(--fht-border-radius);
-  background-color: var(--fht-element-background-color);
-  padding: 8px;
-
   & .icon {
     margin: 1ch;
     float: right;
-  }
-
-  &:hover {
-    background-color: rgba(60, 60, 60, 0.8);
   }
 }
 </style>

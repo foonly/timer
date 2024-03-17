@@ -10,6 +10,13 @@ const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
 const app = createApp(TimerApp);
 
+// Add a custom focus directive.
+app.directive('focus', {
+    mounted(el) { // When element is mounted.
+        el.focus();
+    }
+});
+
 app.use(pinia);
 app.mount("#app");
 

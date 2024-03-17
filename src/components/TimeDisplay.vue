@@ -29,5 +29,3 @@ const timeParts = computed(() => {
     {{ timeParts }}
   </time>
 </template>
-
-<style scoped></style>
