@@ -13,7 +13,7 @@ export default defineConfig({
       includeAssets: ["src/assets/hourglass.svg"],
       manifest: {
         name: "Foonlys Hierarchical Timer",
-        short_name: "FHT",
+        short_name: "Timer",
         description: "Foonlys Hierarchical Timer",
         theme_color: "#000000",
         icons: [
