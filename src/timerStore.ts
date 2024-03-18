@@ -58,39 +58,27 @@ export const useTimerStore = defineStore(
       return false;
     };
     const getTime = (id: string) => {
-      const records: Array<{ start: number; end: number }> = [];
-      for (const timer of timers.value.sort((a, b) => a.start - b.start)) {
-        if (timer.positive && timer.id.startsWith(id)) {
-          const start = timer.start;
-          const end = timer.end > 0 ? timer.end : now.value;
-          let push = true;
-          for (const r of records) {
-            if (start < r.end) {
-              if (end > r.end) {
-                r.end = end;
-              }
-              push = false;
-              break;
-            }
-          }
-          if (push) {
-            records.push({ start, end });
-          }
-        }
+      const records: Array<{ start: number; end: number; id: string }> = [];
+      for (const timer of timers.value.filter((t) => t.positive && t.id.startsWith(id))) {
+        records.push({
+          start: timer.start,
+          end: timer.end > 0 ? timer.end : now.value,
+          id: timer.id,
+        });
       }
-      for (const timer of timers.value) {
-        if (!timer.positive && id.startsWith(timer.id)) {
-          const start = timer.start;
-          const end = timer.end > 0 ? timer.end : now.value;
-          for (const r of records) {
-            if (start > r.start && end < r.end) {
-              // Timer is in the middle.
-              records.push({start: end, end: r.end});
-              r.end = start;
-            } else if (start > r.start && start < r.end) {
+      for (const timer of timers.value.filter((t) => !t.positive)) {
+        const start = timer.start;
+        const end = timer.end > 0 ? timer.end : now.value;
+        for (const r of records) {
+          if (r.id.startsWith(timer.id)) {
+            if (start >= r.start && start < r.end) {
               // Timer overlaps the start.
+              if (end < r.end) {
+                // Timer is in the middle, split the record.
+                records.push({ start: end, end: r.end, id: r.id });
+              }
               r.end = start;
-            } else if (end > r.start && end < r.end) {
+            } else if (end > r.start && end <= r.end) {
               // Timer overlaps the end.
               r.start = end;
             }
@@ -99,8 +87,16 @@ export const useTimerStore = defineStore(
       }
 
       let time = 0;
-      for (const r of records) {
-        time += r.end - r.start;
+      let lastEnd = 0;
+      for (const r of records.sort((a, b) => a.start - b.start)) {
+        if (r.start < lastEnd && r.end > lastEnd) {
+          // Records are overlapping.
+          time += r.end - lastEnd;
+        } else {
+          // No overlap.
+          time += r.end - r.start;
+        }
+        lastEnd = r.end;
       }
       return time;
     };
