@@ -3,6 +3,7 @@ import type { fhtTag } from "../types";
 import Trash from "../assets/trash.svg";
 import Play from "../assets/play.svg";
 import Stop from "../assets/stop.svg";
+import Pause from "../assets/pause.svg";
 import { useTimerStore } from "../timerStore";
 import TimerModal from "./TimerModal.vue";
 import TimeDisplay from "./TimeDisplay.vue";
@@ -18,6 +19,7 @@ const id = `${props.tag.parent}//${props.tag.name}`;
   <div class="tag card">
     <Play class="icon clickable" @click="store.startTimer(id)" v-if="!store.isRunning(id)" />
     <Stop class="icon clickable" @click="store.stopTimer(id)" v-else />
+    <Pause class="icon clickable" />
     <Trash class="icon clickable" @click="store.openModal('remove-tag', tag.parent, tag.name)" />
     <h2>{{ tag.name }}</h2>
     <p>{{ tag.description }}</p>

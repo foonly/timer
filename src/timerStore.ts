@@ -103,7 +103,7 @@ export const useTimerStore = defineStore(
   },
   {
     persist: {
-      paths: ["tags", "timers", "modal"],
+      paths: ["tags", "timers"],
     },
   },
 );
