@@ -12,7 +12,7 @@ defineProps<{ timer: fhtTimer }>();
 <template>
   <div class="timer card">
     <Stop class="icon clickable" @click="store.stopTimer(timer.id)" />
-    <Pause class="icon clickable" @click="store.stopTimer(timer.id)" />
+    <Pause class="icon clickable" @click="store.startTimer(timer.id, false)" />
     <TimerName :name="timer.id" />
     <TimeDisplay :time="(timer.end > 0 ? timer.end : store.now) - timer.start" />
   </div>

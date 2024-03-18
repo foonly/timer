@@ -42,9 +42,9 @@ export const useTimerStore = defineStore(
       timers.value.push(timer);
       now.value = Date.now();
     };
-    const stopTimer = (id: string, positive = true) => {
+    const stopTimer = (id: string) => {
       for (const timer of timers.value) {
-        if (timer.id === id && timer.positive === positive && timer.end === 0) {
+        if (timer.id === id && timer.end === 0) {
           timer.end = Date.now();
         }
       }
@@ -78,6 +78,26 @@ export const useTimerStore = defineStore(
           }
         }
       }
+      for (const timer of timers.value) {
+        if (!timer.positive && id.startsWith(timer.id)) {
+          const start = timer.start;
+          const end = timer.end > 0 ? timer.end : now.value;
+          for (const r of records) {
+            if (start > r.start && end < r.end) {
+              // Timer is in the middle.
+              records.push({start: end, end: r.end});
+              r.end = start;
+            } else if (start > r.start && start < r.end) {
+              // Timer overlaps the start.
+              r.end = start;
+            } else if (end > r.start && end < r.end) {
+              // Timer overlaps the end.
+              r.start = end;
+            }
+          }
+        }
+      }
+
       let time = 0;
       for (const r of records) {
         time += r.end - r.start;
