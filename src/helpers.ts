@@ -19,3 +19,19 @@ export function startInterval() {
     timerStore.now = Date.now();
   }, 1000);
 }
+
+export function getDayNumber(offset=4, time = Date.now()) {
+  const date = new Date(time);
+  const sub = (date.getHours() < offset)? 1:0;
+  date.setHours(0);
+  const zero = new Date("2024-01-01");
+  const diff = date.getTime() - zero.getTime();
+  const days = Math.round(diff / (1000*3600*24));
+  return days - sub;
+}
+
+export function getTimeFromDays(days: number,offset=4) {
+  const date = new Date("2024-01-01");
+  date.setDate(date.getDate()+days);
+  return date.getTime() + (offset * 3600 * 1000);
+}

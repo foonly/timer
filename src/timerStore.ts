@@ -59,6 +59,7 @@ export const useTimerStore = defineStore(
     };
     const getTime = (id: string) => {
       const records: Array<{ start: number; end: number; id: string }> = [];
+      // Clone the timer records to be able to modify them.
       for (const timer of timers.value.filter((t) => t.positive && t.id.startsWith(id))) {
         records.push({
           start: timer.start,
@@ -66,6 +67,8 @@ export const useTimerStore = defineStore(
           id: timer.id,
         });
       }
+
+      // Subtract negative timers from the records.
       for (const timer of timers.value.filter((t) => !t.positive)) {
         const start = timer.start;
         const end = timer.end > 0 ? timer.end : now.value;
@@ -86,6 +89,7 @@ export const useTimerStore = defineStore(
         }
       }
 
+      // Add up the remaining records.
       let time = 0;
       let lastEnd = 0;
       for (const r of records.sort((a, b) => a.start - b.start)) {
