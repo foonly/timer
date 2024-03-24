@@ -17,21 +17,38 @@ export function startInterval() {
   intervalHandle = setInterval(() => {
     const timerStore = useTimerStore();
     timerStore.now = Date.now();
+    if (timerStore.now >= timerStore.dayEnds) {
+      timerStore.dayStarts = getDayStart();
+    }
   }, 1000);
 }
 
-export function getDayNumber(offset=4, time = Date.now()) {
+export function getDayNumber(offset = 4, time = Date.now()) {
   const date = new Date(time);
-  const sub = (date.getHours() < offset)? 1:0;
+  const sub = date.getHours() < offset ? 1 : 0;
   date.setHours(0);
   const zero = new Date("2024-01-01");
   const diff = date.getTime() - zero.getTime();
-  const days = Math.round(diff / (1000*3600*24));
+  const days = Math.round(diff / (1000 * 3600 * 24));
   return days - sub;
 }
 
-export function getTimeFromDays(days: number,offset=4) {
+export function getTimeFromDays(days: number, offset = 4) {
   const date = new Date("2024-01-01");
-  date.setDate(date.getDate()+days);
-  return date.getTime() + (offset * 3600 * 1000);
+  date.setDate(date.getDate() + days);
+  return date.getTime() + offset * 3600 * 1000;
+}
+
+export function getDayStart(time = Date.now(), offset = 4) {
+  const date = new Date(time);
+  const sub = date.getHours() < offset;
+  date.setHours(offset);
+  date.setMinutes(0);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+  if (sub) {
+    date.setDate(date.getDate() - 1);
+  }
+
+  return date.getTime();
 }

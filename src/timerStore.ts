@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
-import { timerSchema, type fhtTag, type fhtTimer } from "./types";
+import { computed, ref } from "vue";
+import { timerSchema, type fhtTag, type fhtTimer, timerGroup, timerDataSchema } from "./types";
 import { modalName } from "./helpers";
 
 export const useTimerStore = defineStore(
@@ -10,6 +10,35 @@ export const useTimerStore = defineStore(
     const timers = ref(<fhtTimer[]>[]);
     const modal = ref("");
     const now = ref(Date.now());
+    const dayStarts = ref(0);
+
+    // Getters
+    const dayEnds = computed(() => {
+      return dayStarts.value + 24 * 3600 * 1000;
+    });
+
+    const todayTimers = computed(() => {
+      return timers.value.filter((timer) => {
+        return timer.start > dayStarts.value;
+      });
+    });
+
+    const groupedTimers = computed(() => {
+      const map: Record<string, timerGroup> = {};
+      for (const timer of todayTimers.value) {
+        const collection = map[timer.id];
+        const item = timerDataSchema.parse(timer);
+        if (!collection) {
+          map[timer.id] = {
+            id: timer.id,
+            timers: [item],
+          };
+        } else {
+          collection.timers.push(item);
+        }
+      }
+      return map;
+    });
 
     // Actions
     const getTags = (parentTag: string): fhtTag[] => {
@@ -42,7 +71,7 @@ export const useTimerStore = defineStore(
       timers.value.push(timer);
       now.value = Date.now();
     };
-    const stopTimer = (id: string, positive: boolean | undefined) => {
+    const stopTimer = (id: string, positive: boolean | undefined = undefined) => {
       for (const timer of timers.value) {
         if (
           timer.id === id &&
@@ -64,7 +93,7 @@ export const useTimerStore = defineStore(
     const getTime = (id: string) => {
       const records: Array<{ start: number; end: number; id: string }> = [];
       // Clone the timer records to be able to modify them.
-      for (const timer of timers.value.filter((t) => t.positive && t.id.startsWith(id))) {
+      for (const timer of todayTimers.value.filter((t) => t.positive && t.id.startsWith(id))) {
         records.push({
           start: timer.start,
           end: timer.end > 0 ? timer.end : now.value,
@@ -73,7 +102,7 @@ export const useTimerStore = defineStore(
       }
 
       // Subtract negative timers from the records.
-      for (const timer of timers.value.filter((t) => !t.positive)) {
+      for (const timer of todayTimers.value.filter((t) => !t.positive)) {
         const start = timer.start;
         const end = timer.end > 0 ? timer.end : now.value;
         for (const r of records) {
@@ -114,6 +143,10 @@ export const useTimerStore = defineStore(
       timers,
       modal,
       now,
+      dayStarts,
+      dayEnds,
+      todayTimers,
+      groupedTimers,
       getTags,
       removeTag,
       openModal,
