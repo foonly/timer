@@ -42,9 +42,13 @@ export const useTimerStore = defineStore(
       timers.value.push(timer);
       now.value = Date.now();
     };
-    const stopTimer = (id: string) => {
+    const stopTimer = (id: string, positive: boolean | undefined) => {
       for (const timer of timers.value) {
-        if (timer.id === id && timer.end === 0) {
+        if (
+          timer.id === id &&
+          timer.end === 0 &&
+          (positive === undefined || timer.positive === positive)
+        ) {
           timer.end = Date.now();
         }
       }
