@@ -25,3 +25,10 @@ const endDate = computed(() => {
     </time>
   </div>
 </template>
+
+<style scoped>
+.start-end {
+  display: flex;
+  gap: 1rem;
+}
+</style>
