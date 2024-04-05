@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "format": "prettier --write src",
     "lint": "eslint src",
-    "preversion": "pnpm test",
-    "version": "",
+    "deploy": "version patch",
+    "preversion": "test",
     "postversion": "git push && git push --tags"
   },
   "dependencies": {
