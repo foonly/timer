@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTimerStore } from "../timerStore";
-import Play from "../assets/play.svg";
+import PlayArrow from "../assets/play-arrow.svg";
 import Plus from "../assets/plus.svg";
 
 const store = useTimerStore();
@@ -13,20 +13,29 @@ const props = defineProps<{ parent: string }>();
     title="Add a random tag and start it"
     @click="store.quickStartTag(props.parent)"
   >
-    <Play class="icon" />
+    <PlayArrow class="arrow" />
     <Plus class="badge" />
   </span>
 </template>
 
 <style scoped>
 .quick-start {
-  display: inline-flex;
-  align-items: center;
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+}
+.arrow {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
 }
 .badge {
-  width: 0.85rem;
-  height: 0.85rem;
-  margin-left: 0.15rem;
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  width: 0.7rem;
+  height: 0.7rem;
   fill: currentColor;
 }
 </style>
