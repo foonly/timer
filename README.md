@@ -51,14 +51,6 @@ pnpm test      # lint + prettier --check
 Pushing a `v*` tag runs the CI workflow in `.github/workflows/publish.yml`,
 which tests, builds, and deploys `dist/` to the production server.
 
-### Recommended IDE setup
-
-[VS Code](https://code.visualstudio.com/) with
-[Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) and the
-[TypeScript Vue Plugin](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
-Vanilla `tsc` can't type-check `.vue` files, which is why `pnpm build` uses
-`vue-tsc` instead — the same plugin gives your editor that awareness too.
-
 ## Tech stack
 
 - [Vue 3](https://vuejs.org/) (`<script setup>`) + TypeScript
