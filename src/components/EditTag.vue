@@ -2,21 +2,53 @@
 import { useTimerStore } from "../timerStore";
 import { tagSchema } from "../types";
 import ModalDialog from "./ModalDialog.vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 const store = useTimerStore();
 const props = defineProps<{ title: string; parent: string; id?: string }>();
-const name = ref("");
-const description = ref("");
+
+const existingTag = computed(() => {
+  return store.tags.find((tag) => `${tag.parent}//${tag.name}` === props.id);
+});
+
+const name = ref(existingTag.value?.name ?? "");
+const description = ref(existingTag.value?.description ?? "");
 
 const submitted = () => {
-  const tag = tagSchema.parse({
-    parent: props.parent,
-    name: name.value,
-    description: description.value,
-  });
-  store.tags.push(tag);
+  if (props.id && existingTag.value) {
+    updateTag(props.id, existingTag.value);
+  } else {
+    const tag = tagSchema.parse({
+      parent: props.parent,
+      name: name.value,
+      description: description.value,
+    });
+    store.tags.push(tag);
+  }
   resetForm();
+};
+
+const updateTag = (oldId: string, tag: { name: string; parent: string; description: string }) => {
+  const newId = `${tag.parent}//${name.value}`;
+  tag.name = name.value;
+  tag.description = description.value;
+
+  if (newId === oldId) {
+    return;
+  }
+
+  for (const other of store.tags) {
+    if (other.parent === oldId) {
+      other.parent = newId;
+    }
+  }
+  for (const timer of store.timers) {
+    if (timer.id === oldId) {
+      timer.id = newId;
+    } else if (timer.id.startsWith(`${oldId}//`)) {
+      timer.id = newId + timer.id.slice(oldId.length);
+    }
+  }
 };
 
 const resetForm = () => {
@@ -35,7 +67,7 @@ const resetForm = () => {
       </div>
       <div class="modal-buttons">
         <button type="reset" @click="resetForm">Cancel</button>
-        <button type="submit">Add</button>
+        <button type="submit">{{ props.id ? "Save" : "Add" }}</button>
       </div>
     </form>
   </ModalDialog>
