@@ -3,6 +3,7 @@ import type { fhtTag } from "../types";
 import Trash from "../assets/trash.svg";
 import Edit from "../assets/edit.svg";
 import Play from "../assets/play.svg";
+import Resume from "../assets/resume.svg";
 import Stop from "../assets/stop.svg";
 import Pause from "../assets/pause.svg";
 import { useTimerStore } from "../timerStore";
@@ -47,7 +48,7 @@ const status = computed(() => store.getStatus(id));
           title="Stop"
           @click="store.stopTimer(id)"
         />
-        <Play
+        <Resume
           v-if="status === 'paused'"
           class="icon clickable"
           title="Resume"
