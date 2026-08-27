@@ -35,7 +35,7 @@
     "eslint-plugin-vue": "^9.33.0",
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
-    "typescript": "^5.9.3",
+    "typescript": "~5.3.3",
     "vite": "^5.4.21",
     "vite-plugin-pwa": "^0.19.8",
     "vite-svg-loader": "^5.1.2",
