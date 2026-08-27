@@ -1,6 +1,21 @@
 # Changelog
 
-### 0.0.11 (2026-08-27)
+## 0.1.0 (2026-08-28)
+
+#### Features
+
+- style: add custom fonts and update typography (c5d4b73)
+
+#### Maintenance
+
+- deps: configure pnpm workspace dependencies (7658008)
+
+### Misc
+- Keep deleted tags in their original position in the report (8a09352)
+- Stop open timers when their tag is deleted (e41e60e)
+- Keep a deleted tag's own row in the report, not just its surviving ancestor's (d6ceaf5)
+
+### v0.0.11 (2026-08-27)
 
 #### Documentation
 
