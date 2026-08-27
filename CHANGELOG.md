@@ -1,0 +1,96 @@
+# Changelog
+
+### 0.0.11 (2026-08-27)
+
+#### Documentation
+
+- readme: remove outdated IDE setup instructions (fcfe549)
+
+#### Build System
+
+- deps: update project dependencies (56cfd5c)
+
+#### Maintenance
+
+- config: add foonver.toml configuration file (719ad4d)
+- vscode: remove extensions configuration (b42411b)
+
+### Misc
+- Give Resume its own icon instead of reusing plain Play (3192502)
+- Show pause/resume on tags that only have sub-timers running (1dcf9ba)
+- Include sub-timer-only tags in the report, in tree order; fix a sibling-name prefix bug (f893a1d)
+- Give report list entries a breadcrumb name display (dbb5ed0)
+- Replace running-timers panel with a daily report and day navigation (892818a)
+- Fix Resume not appearing when a pause is inherited from a parent (3cea872)
+- Detect redundant duplicate timer records on startup (c354cf1)
+- Give the add-tag/quick-start row breathing room (16763b1)
+- Rework nested tag card layout: more room, title-first, bigger time (74175cc)
+- Redesign quick-start icon: bare arrow, corner badge (ae6477d)
+- Add one-click random tag + start button (bef924c)
+- Write a proper README (37c0f05)
+- Add resume and hide pause controls when nothing own is running (ef1326f)
+- Make timer status visually distinct (ebac3bf)
+- Fix Edit Tag creating a duplicate instead of updating (890db4d)
+- Fixed scripts (b1e3830)
+- Testing scripts (0df7673)
+
+### v0.0.10 (2024-03-25)
+
+### Misc
+- Some styling (f6a0fb1)
+- Combined daily timers, needs styling. (b18f846)
+- Timer positive optional (2bbf0d7)
+- Added day <-> date calculation functions. (bfbfd6e)
+
+### v0.0.9 (2024-03-19)
+
+### Misc
+- Hopefully working calculation. (33a6a98)
+- Almost working, but completely wrong time calc. (6477766)
+
+### v0.0.8 (2024-03-18)
+
+### Misc
+- Added pause button (bcb4b57)
+- Change to manifest file. (b5ef09b)
+- Styling cleanup (c9ebee3)
+
+### v0.0.7 (2024-03-17)
+
+### Misc
+- Formatting (b6da650)
+- Styling and some conditional logic (a2f4986)
+
+### v0.0.6 (2024-03-14)
+
+### Misc
+- PWA (577225a)
+
+### v0.0.5 (2024-03-11)
+
+### Misc
+- Deploy script (08bcf3c)
+
+### v0.0.4 (2024-03-11)
+
+### Misc
+- Updated lock file (04fd420)
+
+### v0.0.3 (2024-03-11)
+
+### Misc
+- Formatting (b974d1a)
+- Basic timer logic. (b76733e)
+- TimeDisplay component (e1c5d28)
+- Basic timer output (1479f12)
+- Added manifest, style tweaks (9762b1e)
+- Working linting (3104a45)
+
+### v0.0.2 (2024-02-26)
+
+### Misc
+- Test github action (99bb306)
+- Basic Tag management working. (d6c1740)
+- Basic tag display (51fcd16)
+- Initial commit (07d4d71)
+
