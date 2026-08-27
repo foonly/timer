@@ -24,9 +24,22 @@ const status = computed(() => store.getStatus(id));
   <div class="tag card" :data-status="status">
     <header>
       <section class="controls icons">
-        <Play class="icon clickable" @click="store.startTimer(id)" v-if="!store.isRunning(id)" />
-        <Stop class="icon clickable" @click="store.stopTimer(id)" v-else />
-        <Pause class="icon clickable" @click="store.startTimer(id, false)" />
+        <Play
+          class="icon clickable"
+          title="Start"
+          @click="store.startTimer(id)"
+          v-if="!store.isRunning(id)"
+        />
+        <template v-else>
+          <Stop class="icon clickable" title="Stop" @click="store.stopTimer(id)" />
+          <Play
+            v-if="store.isRunning(id, false)"
+            class="icon clickable"
+            title="Resume"
+            @click="store.stopTimer(id, false)"
+          />
+          <Pause v-else class="icon clickable" title="Pause" @click="store.startTimer(id, false)" />
+        </template>
       </section>
       <h2><StatusDot :status="status" />{{ tag.name }}</h2>
       <section class="actions icons">

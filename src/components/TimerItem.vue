@@ -4,6 +4,7 @@ import type { timerGroup } from "../types";
 import TimerName from "./TimerName.vue";
 import TimeDisplay from "./TimeDisplay.vue";
 import StartEnd from "./StartEnd.vue";
+import Play from "../assets/play.svg";
 import Stop from "../assets/stop.svg";
 import Pause from "../assets/pause.svg";
 import Up from "../assets/chevron-up.svg";
@@ -18,8 +19,21 @@ const status = computed(() => store.getStatus(props.timer.id));
 
 <template>
   <div class="timer card" :data-status="status">
-    <Stop class="icon clickable" @click="store.stopTimer(timer.id)" />
-    <Pause class="icon clickable" @click="store.startTimer(timer.id, false)" />
+    <template v-if="store.isRunning(timer.id)">
+      <Stop class="icon clickable" title="Stop" @click="store.stopTimer(timer.id)" />
+      <Play
+        v-if="store.isRunning(timer.id, false)"
+        class="icon clickable"
+        title="Resume"
+        @click="store.stopTimer(timer.id, false)"
+      />
+      <Pause
+        v-else
+        class="icon clickable"
+        title="Pause"
+        @click="store.startTimer(timer.id, false)"
+      />
+    </template>
     <TimerName :name="timer.id" :status="status" />
     <TimeDisplay class="total-time" :time="store.getTime(timer.id)" />
     <Down v-if="!showTime" class="icon clickable" @click="showTime = true" />
