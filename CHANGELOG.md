@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.1.0 (2026-08-28)
+### 0.1.1 (2026-08-28)
+
+#### Bug Fixes
+
+- build: resolve typescript and workspace compile crashes (4037314)
+
+## v0.1.0 (2026-08-28)
 
 #### Features
 
