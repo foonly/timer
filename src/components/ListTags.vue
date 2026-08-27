@@ -2,6 +2,7 @@
 import { useTimerStore } from "../timerStore";
 import TagItem from "./TagItem.vue";
 import EditTag from "./EditTag.vue";
+import QuickStartButton from "./QuickStartButton.vue";
 import { tagName } from "../helpers";
 import Plus from "../assets/plus.svg";
 
@@ -13,7 +14,14 @@ const props = defineProps<{ parent: string }>();
   <div id="tags">
     <TagItem v-for="tag in store.getTags(props.parent)" :tag="tag" :key="tag.name">
       <ListTags :parent="tag.parent + '//' + tag.name" />
-      <Plus class="icon clickable" @click="store.openModal('add-tag', tag.parent, tag.name)" />
+      <div class="icons">
+        <Plus
+          class="icon clickable"
+          title="Add tag"
+          @click="store.openModal('add-tag', tag.parent, tag.name)"
+        />
+        <QuickStartButton :parent="tag.parent + '//' + tag.name" />
+      </div>
     </TagItem>
 
     <EditTag
@@ -38,4 +46,3 @@ const props = defineProps<{ parent: string }>();
   }
 }
 </style>
-./TagItem.vue

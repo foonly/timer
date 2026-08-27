@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useTimerStore } from "../timerStore";
-import { tagSchema } from "../types";
 import ModalDialog from "./ModalDialog.vue";
 import { computed, ref } from "vue";
 
@@ -18,12 +17,7 @@ const submitted = () => {
   if (props.id && existingTag.value) {
     updateTag(props.id, existingTag.value);
   } else {
-    const tag = tagSchema.parse({
-      parent: props.parent,
-      name: name.value,
-      description: description.value,
-    });
-    store.tags.push(tag);
+    store.addTag(props.parent, name.value, description.value);
   }
   resetForm();
 };

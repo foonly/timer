@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import {
+  tagSchema,
   timerSchema,
   type fhtTag,
   type fhtTimer,
@@ -9,6 +10,7 @@ import {
   type timerStatus,
 } from "./types";
 import { modalName } from "./helpers";
+import { randomTagName } from "./randomNames";
 
 export const useTimerStore = defineStore(
   "timer",
@@ -53,12 +55,27 @@ export const useTimerStore = defineStore(
         return tag.parent === parentTag;
       });
     };
+    const addTag = (parent: string, name: string, description = "") => {
+      const tag = tagSchema.parse({ parent, name, description });
+      tags.value.push(tag);
+      return tag;
+    };
     const removeTag = (remove: string) => {
       tags.value = tags.value.filter((tag) => {
         const id = `${tag.parent}//${tag.name}`;
         return !id.startsWith(remove);
       });
       modal.value = "";
+    };
+    const quickStartTag = (parent: string) => {
+      const takenNames = new Set(getTags(parent).map((tag) => tag.name));
+      let name = randomTagName();
+      let attempt = 2;
+      while (takenNames.has(name)) {
+        name = `${randomTagName()} ${attempt++}`;
+      }
+      addTag(parent, name);
+      startTimer(`${parent}//${name}`);
     };
     const openModal = (id: string, ...name: string[]) => {
       modal.value = modalName(id, ...name);
@@ -184,7 +201,9 @@ export const useTimerStore = defineStore(
       todayTimers,
       groupedTimers,
       getTags,
+      addTag,
       removeTag,
+      quickStartTag,
       openModal,
       closeModal,
       isModal,

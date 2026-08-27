@@ -7,6 +7,7 @@ import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import Plus from "./assets/plus.svg";
+import QuickStartButton from "./components/QuickStartButton.vue";
 import type { timerStatus } from "./types";
 import { statusLabels } from "./helpers";
 
@@ -29,7 +30,10 @@ const legendStatuses: timerStatus[] = ["running", "paused", "sub-running", "idle
     <main id="main-grid">
       <section id="tags-section">
         <ListTags parent="" />
-        <Plus class="icon clickable" @click="store.modal = 'add-tag:'" />
+        <div class="icons">
+          <Plus class="icon clickable" title="Add tag" @click="store.modal = 'add-tag:'" />
+          <QuickStartButton parent="" />
+        </div>
       </section>
       <ListTimers />
     </main>
@@ -42,7 +46,7 @@ h1 {
   margin-left: 3rem;
   margin-right: 3rem;
 }
-.icons {
+aside.icons {
   position: absolute;
   right: 1rem;
   top: 1rem;
