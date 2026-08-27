@@ -225,12 +225,10 @@ export const useTimerStore = defineStore(
       const start = reportDayStart.value;
       const end = reportDayEnd.value;
       const entries: Array<{ id: string; time: number }> = [];
-      const covered = new Set<string>();
 
       const visit = (parent: string) => {
         for (const tag of getTags(parent)) {
           const id = `${tag.parent}//${tag.name}`;
-          covered.add(id);
           const time = getTimeInRange(id, start, end);
           if (time > 0) {
             entries.push({ id, time });
@@ -240,15 +238,19 @@ export const useTimerStore = defineStore(
       };
       visit("");
 
-      // A timer whose tag was since deleted rolls up into nothing above, so it would otherwise
-      // vanish from the report despite still counting toward the day's grand total.
-      const orphanIds = new Set(
+      // A timer whose tag has since been deleted has no matching tag entry any more, so the walk
+      // above never produces a row for it - even when a surviving ancestor's own row already
+      // rolls its time in. Keeping its own row too (same as any other parent+child pair) is what
+      // lets a tag be deleted to tidy up the tag list without losing its history from the report.
+      // A rename doesn't hit this path: it updates the timer's id in place, so it's still "known".
+      const knownTagIds = new Set(tags.value.map((tag) => `${tag.parent}//${tag.name}`));
+      const deletedTagIds = new Set(
         timers.value
           .filter((t) => t.start >= start && t.start < end)
           .map((t) => t.id)
-          .filter((id) => ![...covered].some((c) => isSelfOrDescendant(id, c))),
+          .filter((id) => !knownTagIds.has(id)),
       );
-      for (const id of orphanIds) {
+      for (const id of [...deletedTagIds].sort()) {
         const time = getTimeInRange(id, start, end);
         if (time > 0) {
           entries.push({ id, time });
