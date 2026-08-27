@@ -39,18 +39,26 @@ const status = computed(() => store.getStatus(id));
           class="icon clickable"
           title="Start"
           @click="store.startTimer(id)"
-          v-if="!store.isRunning(id)"
+          v-if="!store.isRunning(id) && status !== 'paused'"
         />
-        <template v-else>
-          <Stop class="icon clickable" title="Stop" @click="store.stopTimer(id)" />
-          <Play
-            v-if="status === 'paused'"
-            class="icon clickable"
-            title="Resume"
-            @click="store.resumeTimer(id)"
-          />
-          <Pause v-else class="icon clickable" title="Pause" @click="store.startTimer(id, false)" />
-        </template>
+        <Stop
+          v-if="store.isRunning(id)"
+          class="icon clickable"
+          title="Stop"
+          @click="store.stopTimer(id)"
+        />
+        <Play
+          v-if="status === 'paused'"
+          class="icon clickable"
+          title="Resume"
+          @click="store.resumeTimer(id)"
+        />
+        <Pause
+          v-else-if="status === 'running' || status === 'sub-running'"
+          class="icon clickable"
+          title="Pause"
+          @click="store.startTimer(id, false)"
+        />
       </section>
       <TimeDisplay class="tag-time" :time="store.getTime(id)" />
     </div>

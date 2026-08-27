@@ -140,12 +140,25 @@ export const useTimerStore = defineStore(
           !isPausedNow(timer.id),
       );
     };
+    // Like hasActiveDescendant, but also counts a descendant that's currently frozen by a pause -
+    // used to tell "genuinely nothing running below" apart from "paused before it could show as
+    // running", so a tag with only sub-timers still reports "paused" instead of "idle" once its
+    // whole subtree is frozen.
+    const hasOpenDescendant = (id: string) => {
+      return timers.value.some(
+        (timer) =>
+          timer.positive && timer.end === 0 && timer.id !== id && isSelfOrDescendant(timer.id, id),
+      );
+    };
     const getStatus = (id: string): timerStatus => {
       if (isRunning(id)) {
         return isPausedNow(id) ? "paused" : "running";
       }
       if (hasActiveDescendant(id)) {
         return "sub-running";
+      }
+      if (isPausedNow(id) && hasOpenDescendant(id)) {
+        return "paused";
       }
       return "idle";
     };
