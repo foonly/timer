@@ -100,20 +100,14 @@ h2 {
 }
 
 .card {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
   border: 1px solid var(--fht-element-border-color);
   border-left: 4px solid var(--fht-status-idle);
   border-radius: var(--fht-border-radius);
   background-color: var(--fht-element-background-color);
   box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
   transition: border-left-color 0.2s ease;
-
-  & header {
-    display: grid;
-    grid-template-columns: 6rem auto 6rem;
-    align-items: center;
-  }
 
   &[data-status="running"] {
     border-left-color: var(--fht-status-running);
