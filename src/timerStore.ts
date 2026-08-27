@@ -48,6 +48,14 @@ export const useTimerStore = defineStore(
       return tag;
     };
     const removeTag = (remove: string) => {
+      // Once the tag is gone there's no card left to click Stop/Resume on, so any timer still
+      // open on it or a descendant would otherwise run (or stay paused) forever, uncontrollably.
+      const stoppedAt = Date.now();
+      for (const timer of timers.value) {
+        if (timer.end === 0 && isSelfOrDescendant(timer.id, remove)) {
+          timer.end = stoppedAt;
+        }
+      }
       tags.value = tags.value.filter((tag) => {
         const id = `${tag.parent}//${tag.name}`;
         return !isSelfOrDescendant(id, remove);
