@@ -31,22 +31,6 @@ export function startInterval() {
   }, 1000);
 }
 
-export function getDayNumber(offset = 4, time = Date.now()) {
-  const date = new Date(time);
-  const sub = date.getHours() < offset ? 1 : 0;
-  date.setHours(0);
-  const zero = new Date("2024-01-01");
-  const diff = date.getTime() - zero.getTime();
-  const days = Math.round(diff / (1000 * 3600 * 24));
-  return days - sub;
-}
-
-export function getTimeFromDays(days: number, offset = 4) {
-  const date = new Date("2024-01-01");
-  date.setDate(date.getDate() + days);
-  return date.getTime() + offset * 3600 * 1000;
-}
-
 export function getDayStart(time = Date.now(), offset = 4) {
   const date = new Date(time);
   const sub = date.getHours() < offset;
@@ -59,4 +43,36 @@ export function getDayStart(time = Date.now(), offset = 4) {
   }
 
   return date.getTime();
+}
+
+// Day 0's boundary: the getDayStart of a fixed local-time anchor. getDayNumber and
+// getTimeFromDays both count from this exact instant so they stay exact inverses of each other.
+const dayZeroBoundary = (offset: number) => getDayStart(new Date(2024, 0, 1).getTime(), offset);
+
+export function getDayNumber(offset = 4, time = Date.now()) {
+  // A day isn't always exactly 24h across a DST transition, so this ms-based diff drifts by
+  // about an hour per transition it spans - fine, Math.round still lands on the right day count
+  // as long as that drift stays under 12h (true for any realistic time range here).
+  const diff = getDayStart(time, offset) - dayZeroBoundary(offset);
+  return Math.round(diff / (1000 * 3600 * 24));
+}
+
+export function getTimeFromDays(days: number, offset = 4) {
+  // Unlike getDayNumber, this must land on an exact boundary, so it walks calendar days via
+  // setDate (DST-safe, preserves the local time-of-day) from day 0's boundary instead of adding
+  // days * 24h in ms.
+  const date = new Date(dayZeroBoundary(offset));
+  date.setDate(date.getDate() + days);
+  return date.getTime();
+}
+
+export function formatDayLabel(dayNumber: number, todayNumber: number, offset = 4) {
+  if (dayNumber === todayNumber) {
+    return "Today";
+  }
+  if (dayNumber === todayNumber - 1) {
+    return "Yesterday";
+  }
+  const date = new Date(getTimeFromDays(dayNumber, offset));
+  return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }

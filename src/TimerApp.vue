@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ListTags from "./components/ListTags.vue";
-import ListTimers from "./components/ListTimers.vue";
+import DailyReport from "./components/DailyReport.vue";
 import StatusDot from "./components/StatusDot.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
@@ -29,7 +29,7 @@ const legendStatuses: timerStatus[] = ["running", "paused", "sub-running", "idle
         <ListTags parent="" />
         <AddTagRow parent="" />
       </section>
-      <ListTimers />
+      <DailyReport />
     </main>
   </div>
 </template>

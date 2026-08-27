@@ -20,10 +20,4 @@ export const timerSchema = timerDataSchema.extend({
 });
 export type fhtTimer = z.infer<typeof timerSchema>;
 
-export const timerGroupSchema = z.object({
-  id: z.string(),
-  timers: z.array(timerDataSchema),
-});
-export type timerGroup = z.infer<typeof timerGroupSchema>;
-
 export type timerStatus = "running" | "paused" | "sub-running" | "idle";

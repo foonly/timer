@@ -1,15 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import {
-  tagSchema,
-  timerSchema,
-  type fhtTag,
-  type fhtTimer,
-  timerGroup,
-  timerDataSchema,
-  type timerStatus,
-} from "./types";
-import { modalName } from "./helpers";
+import { tagSchema, timerSchema, type fhtTag, type fhtTimer, type timerStatus } from "./types";
+import { modalName, getDayNumber, getTimeFromDays, formatDayLabel } from "./helpers";
 import { randomTagName } from "./randomNames";
 
 export const useTimerStore = defineStore(
@@ -20,34 +12,23 @@ export const useTimerStore = defineStore(
     const modal = ref("");
     const now = ref(Date.now());
     const dayStarts = ref(0);
+    // null means "today" and tracks the real day as it advances; a number pins the report to
+    // that specific day so browsing history doesn't get yanked forward by a real day rollover.
+    const viewedDayNumber = ref<number | null>(null);
 
     // Getters
     const dayEnds = computed(() => {
       return dayStarts.value + 24 * 3600 * 1000;
     });
 
-    const todayTimers = computed(() => {
-      return timers.value.filter((timer) => {
-        return timer.start > dayStarts.value;
-      });
-    });
-
-    const groupedTimers = computed(() => {
-      const map: Record<string, timerGroup> = {};
-      for (const timer of todayTimers.value) {
-        const collection = map[timer.id];
-        const item = timerDataSchema.parse(timer);
-        if (!collection) {
-          map[timer.id] = {
-            id: timer.id,
-            timers: [item],
-          };
-        } else {
-          collection.timers.push(item);
-        }
-      }
-      return map;
-    });
+    const todayDayNumber = computed(() => getDayNumber(4, now.value));
+    const reportDayNumber = computed(() => viewedDayNumber.value ?? todayDayNumber.value);
+    const reportDayStart = computed(() => getTimeFromDays(reportDayNumber.value));
+    const reportDayEnd = computed(() => reportDayStart.value + 24 * 3600 * 1000);
+    const isViewingToday = computed(() => reportDayNumber.value === todayDayNumber.value);
+    const reportDayLabel = computed(() =>
+      formatDayLabel(reportDayNumber.value, todayDayNumber.value),
+    );
 
     // Actions
     const getTags = (parentTag: string): fhtTag[] => {
@@ -66,6 +47,17 @@ export const useTimerStore = defineStore(
         return !id.startsWith(remove);
       });
       modal.value = "";
+    };
+    const goToPreviousDay = () => {
+      viewedDayNumber.value = reportDayNumber.value - 1;
+    };
+    const goToNextDay = () => {
+      if (!isViewingToday.value) {
+        viewedDayNumber.value = reportDayNumber.value + 1;
+      }
+    };
+    const goToToday = () => {
+      viewedDayNumber.value = null;
     };
     const quickStartTag = (parent: string) => {
       const takenNames = new Set(getTags(parent).map((tag) => tag.name));
@@ -157,21 +149,26 @@ export const useTimerStore = defineStore(
       return "idle";
     };
 
-    const getTime = (id: string) => {
+    // Core interval-subtraction algorithm, bounded to an arbitrary [rangeStart, rangeEnd) window
+    // so it can serve both the live "today" total and a fixed historical day's report.
+    const getTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
+      const cap = Math.min(now.value, rangeEnd);
+      const windowTimers = timers.value.filter((t) => t.start >= rangeStart && t.start < rangeEnd);
+
       const records: Array<{ start: number; end: number; id: string }> = [];
       // Clone the timer records to be able to modify them.
-      for (const timer of todayTimers.value.filter((t) => t.positive && t.id.startsWith(id))) {
+      for (const timer of windowTimers.filter((t) => t.positive && t.id.startsWith(id))) {
         records.push({
           start: timer.start,
-          end: timer.end > 0 ? timer.end : now.value,
+          end: timer.end > 0 ? timer.end : cap,
           id: timer.id,
         });
       }
 
       // Subtract negative timers from the records.
-      for (const timer of todayTimers.value.filter((t) => !t.positive)) {
+      for (const timer of windowTimers.filter((t) => !t.positive)) {
         const start = timer.start;
-        const end = timer.end > 0 ? timer.end : now.value;
+        const end = timer.end > 0 ? timer.end : cap;
         for (const r of records) {
           if (r.id.startsWith(timer.id)) {
             if (start >= r.start && start < r.end) {
@@ -205,6 +202,30 @@ export const useTimerStore = defineStore(
       return time;
     };
 
+    const getTime = (id: string) => getTimeInRange(id, dayStarts.value, dayEnds.value);
+
+    // One rollup total per tag id that has any timer record on the viewed day, sorted highest
+    // first. An empty string id rolls up to every tag, used for the day's grand total.
+    const reportEntries = computed(() => {
+      const start = reportDayStart.value;
+      const end = reportDayEnd.value;
+      const ids = new Set(
+        timers.value.filter((t) => t.start >= start && t.start < end).map((t) => t.id),
+      );
+      const entries = [];
+      for (const id of ids) {
+        const time = getTimeInRange(id, start, end);
+        if (time > 0) {
+          entries.push({ id, time });
+        }
+      }
+      return entries.sort((a, b) => b.time - a.time);
+    });
+
+    const reportDayTotal = computed(() =>
+      getTimeInRange("", reportDayStart.value, reportDayEnd.value),
+    );
+
     return {
       tags,
       timers,
@@ -212,8 +233,13 @@ export const useTimerStore = defineStore(
       now,
       dayStarts,
       dayEnds,
-      todayTimers,
-      groupedTimers,
+      isViewingToday,
+      reportDayLabel,
+      reportEntries,
+      reportDayTotal,
+      goToPreviousDay,
+      goToNextDay,
+      goToToday,
       getTags,
       addTag,
       removeTag,
