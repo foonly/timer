@@ -1,6 +1,13 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { timerSchema, type fhtTag, type fhtTimer, timerGroup, timerDataSchema } from "./types";
+import {
+  timerSchema,
+  type fhtTag,
+  type fhtTimer,
+  timerGroup,
+  timerDataSchema,
+  type timerStatus,
+} from "./types";
 import { modalName } from "./helpers";
 
 export const useTimerStore = defineStore(
@@ -90,6 +97,35 @@ export const useTimerStore = defineStore(
       }
       return false;
     };
+    // A negative (pause) timer covering `id` freezes accrual for `id` itself
+    // and everything nested under it, so "paused right now" has to check the
+    // whole ancestor chain, not just an exact id match.
+    const isPausedNow = (id: string) => {
+      return timers.value.some(
+        (timer) =>
+          !timer.positive && timer.end === 0 && (timer.id === id || id.startsWith(`${timer.id}//`)),
+      );
+    };
+    const hasActiveDescendant = (id: string) => {
+      return timers.value.some(
+        (timer) =>
+          timer.positive &&
+          timer.end === 0 &&
+          timer.id !== id &&
+          timer.id.startsWith(`${id}//`) &&
+          !isPausedNow(timer.id),
+      );
+    };
+    const getStatus = (id: string): timerStatus => {
+      if (isRunning(id)) {
+        return isPausedNow(id) ? "paused" : "running";
+      }
+      if (hasActiveDescendant(id)) {
+        return "sub-running";
+      }
+      return "idle";
+    };
+
     const getTime = (id: string) => {
       const records: Array<{ start: number; end: number; id: string }> = [];
       // Clone the timer records to be able to modify them.
@@ -155,6 +191,7 @@ export const useTimerStore = defineStore(
       startTimer,
       stopTimer,
       isRunning,
+      getStatus,
       getTime,
     };
   },

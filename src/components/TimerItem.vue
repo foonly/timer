@@ -8,18 +8,19 @@ import Stop from "../assets/stop.svg";
 import Pause from "../assets/pause.svg";
 import Up from "../assets/chevron-up.svg";
 import Down from "../assets/chevron-down.svg";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 const store = useTimerStore();
-defineProps<{ timer: timerGroup }>();
+const props = defineProps<{ timer: timerGroup }>();
 const showTime = ref(false);
+const status = computed(() => store.getStatus(props.timer.id));
 </script>
 
 <template>
-  <div class="timer card">
+  <div class="timer card" :data-status="status">
     <Stop class="icon clickable" @click="store.stopTimer(timer.id)" />
     <Pause class="icon clickable" @click="store.startTimer(timer.id, false)" />
-    <TimerName :name="timer.id" />
+    <TimerName :name="timer.id" :status="status" />
     <TimeDisplay class="total-time" :time="store.getTime(timer.id)" />
     <Down v-if="!showTime" class="icon clickable" @click="showTime = true" />
     <Up v-else class="icon clickable" @click="showTime = false" />

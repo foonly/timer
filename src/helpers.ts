@@ -1,8 +1,16 @@
 import { useTimerStore } from "./timerStore";
+import type { timerStatus } from "./types";
 
 export function modalName(id: string, ...name: string[]): string {
   return `${id}:${name.join("//")}`;
 }
+
+export const statusLabels: Record<timerStatus, string> = {
+  "running": "Running",
+  "paused": "Paused",
+  "sub-running": "Sub-timer running",
+  "idle": "Stopped",
+};
 
 export const tagName = (id: string) => {
   return id.split("//").at(-1);

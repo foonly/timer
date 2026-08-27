@@ -25,3 +25,5 @@ export const timerGroupSchema = z.object({
   timers: z.array(timerDataSchema),
 });
 export type timerGroup = z.infer<typeof timerGroupSchema>;
+
+export type timerStatus = "running" | "paused" | "sub-running" | "idle";

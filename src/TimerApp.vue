@@ -2,12 +2,16 @@
 import { useTimerStore } from "./timerStore";
 import ListTags from "./components/ListTags.vue";
 import ListTimers from "./components/ListTimers.vue";
+import StatusDot from "./components/StatusDot.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import Plus from "./assets/plus.svg";
+import type { timerStatus } from "./types";
+import { statusLabels } from "./helpers";
 
 const store = useTimerStore();
+const legendStatuses: timerStatus[] = ["running", "paused", "sub-running", "idle"];
 </script>
 
 <template>
@@ -17,6 +21,11 @@ const store = useTimerStore();
       <Settings class="icon clickable" />
     </aside>
     <h1>Foonlys Hierarchical Timer</h1>
+    <div class="status-legend">
+      <span class="status-legend-item" v-for="status in legendStatuses" :key="status">
+        <StatusDot :status="status" />{{ statusLabels[status] }}
+      </span>
+    </div>
     <main id="main-grid">
       <section id="tags-section">
         <ListTags parent="" />
@@ -38,5 +47,8 @@ h1 {
   right: 1rem;
   top: 1rem;
   opacity: 0.5;
+}
+.status-legend {
+  justify-content: center;
 }
 </style>
