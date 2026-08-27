@@ -3,6 +3,7 @@ import { useTimerStore } from "./timerStore";
 import ListTags from "./components/ListTags.vue";
 import ListTimers from "./components/ListTimers.vue";
 import DarkLight from "./assets/dark-light.svg";
+import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import Plus from "./assets/plus.svg";
 
@@ -11,7 +12,10 @@ const store = useTimerStore();
 
 <template>
   <div class="app-root">
-    <DarkLight class="icon clickable dark-light" @click="toggleDarkLightMode" />
+    <aside class="icons">
+      <DarkLight class="icon clickable" @click="toggleDarkLightMode" />
+      <Settings class="icon clickable" />
+    </aside>
     <h1>Foonlys Hierarchical Timer</h1>
     <main id="main-grid">
       <section id="tags-section">
@@ -29,7 +33,7 @@ h1 {
   margin-left: 3rem;
   margin-right: 3rem;
 }
-.dark-light {
+.icons {
   position: absolute;
   right: 1rem;
   top: 1rem;
