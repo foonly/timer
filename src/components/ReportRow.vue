@@ -15,7 +15,10 @@ const status = computed(() => store.getStatus(props.id));
   <div class="report-row">
     <span class="name">
       <StatusDot v-if="live" :status="status" />
-      <span class="name-part" v-for="part in nameParts" :key="part">{{ part }}</span>
+      <span class="crumb" v-for="(part, i) in nameParts" :key="part">
+        <span class="separator" v-if="i > 0">›</span>
+        <span class="name-part" :class="{ active: i === nameParts.length - 1 }">{{ part }}</span>
+      </span>
     </span>
     <TimeDisplay class="row-time" :time="time" />
   </div>
@@ -42,14 +45,24 @@ const status = computed(() => store.getStatus(props.id));
   min-width: 0;
 
   & .status-dot {
-    margin-right: 0.2ch;
+    margin-right: 0.3ch;
   }
 }
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3ch;
+}
+.separator {
+  opacity: 0.35;
+}
 .name-part {
-  display: inline-block;
-  background-color: var(--fht-element-background-color);
-  border-radius: var(--fht-border-radius);
-  padding: 0.2ch 0.6ch;
+  opacity: 0.55;
+
+  &.active {
+    opacity: 1;
+    font-weight: 600;
+  }
 }
 .row-time {
   flex: none;
