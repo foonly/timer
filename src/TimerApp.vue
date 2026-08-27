@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { useTimerStore } from "./timerStore";
 import ListTags from "./components/ListTags.vue";
 import ListTimers from "./components/ListTimers.vue";
 import StatusDot from "./components/StatusDot.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
-import Plus from "./assets/plus.svg";
-import QuickStartButton from "./components/QuickStartButton.vue";
+import AddTagRow from "./components/AddTagRow.vue";
 import type { timerStatus } from "./types";
 import { statusLabels } from "./helpers";
 
-const store = useTimerStore();
 const legendStatuses: timerStatus[] = ["running", "paused", "sub-running", "idle"];
 </script>
 
@@ -30,10 +27,7 @@ const legendStatuses: timerStatus[] = ["running", "paused", "sub-running", "idle
     <main id="main-grid">
       <section id="tags-section">
         <ListTags parent="" />
-        <div class="icons">
-          <Plus class="icon clickable" title="Add tag" @click="store.modal = 'add-tag:'" />
-          <QuickStartButton parent="" />
-        </div>
+        <AddTagRow parent="" />
       </section>
       <ListTimers />
     </main>
