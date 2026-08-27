@@ -21,8 +21,9 @@ const props = defineProps<{ parent: string }>();
 <style scoped>
 .add-row {
   padding: 0.5rem 0;
+  justify-content: flex-end;
 }
 .add-row.root {
-  margin-left: 1rem;
+  margin-right: 1rem;
 }
 </style>
