@@ -16,6 +16,13 @@ export const tagName = (id: string) => {
   return id.split("//").at(-1);
 };
 
+// Whether `id` is `ancestor` itself or nested under it. A plain `id.startsWith(ancestor)` would
+// wrongly match a sibling whose name happens to start with the same text (e.g. "Child 2" starts
+// with "Child" as a string, but isn't nested under it) - the "//" boundary is what rules that out.
+export function isSelfOrDescendant(id: string, ancestor: string): boolean {
+  return id === ancestor || id.startsWith(`${ancestor}//`);
+}
+
 let intervalHandle = 0;
 
 export function startInterval() {

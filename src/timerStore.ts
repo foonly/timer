@@ -1,7 +1,13 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { tagSchema, timerSchema, type fhtTag, type fhtTimer, type timerStatus } from "./types";
-import { modalName, getDayNumber, getTimeFromDays, formatDayLabel } from "./helpers";
+import {
+  modalName,
+  getDayNumber,
+  getTimeFromDays,
+  formatDayLabel,
+  isSelfOrDescendant,
+} from "./helpers";
 import { randomTagName } from "./randomNames";
 
 export const useTimerStore = defineStore(
@@ -44,7 +50,7 @@ export const useTimerStore = defineStore(
     const removeTag = (remove: string) => {
       tags.value = tags.value.filter((tag) => {
         const id = `${tag.parent}//${tag.name}`;
-        return !id.startsWith(remove);
+        return !isSelfOrDescendant(id, remove);
       });
       modal.value = "";
     };
@@ -111,8 +117,7 @@ export const useTimerStore = defineStore(
     // whole ancestor chain, not just an exact id match.
     const isPausedNow = (id: string) => {
       return timers.value.some(
-        (timer) =>
-          !timer.positive && timer.end === 0 && (timer.id === id || id.startsWith(`${timer.id}//`)),
+        (timer) => !timer.positive && timer.end === 0 && isSelfOrDescendant(id, timer.id),
       );
     };
     // Mirrors isPausedNow: `id` can be frozen by a pause on itself or on any
@@ -120,11 +125,7 @@ export const useTimerStore = defineStore(
     // not just one started on `id` exactly.
     const resumeTimer = (id: string) => {
       for (const timer of timers.value) {
-        if (
-          !timer.positive &&
-          timer.end === 0 &&
-          (timer.id === id || id.startsWith(`${timer.id}//`))
-        ) {
+        if (!timer.positive && timer.end === 0 && isSelfOrDescendant(id, timer.id)) {
           timer.end = Date.now();
         }
       }
@@ -135,7 +136,7 @@ export const useTimerStore = defineStore(
           timer.positive &&
           timer.end === 0 &&
           timer.id !== id &&
-          timer.id.startsWith(`${id}//`) &&
+          isSelfOrDescendant(timer.id, id) &&
           !isPausedNow(timer.id),
       );
     };
@@ -157,7 +158,7 @@ export const useTimerStore = defineStore(
 
       const records: Array<{ start: number; end: number; id: string }> = [];
       // Clone the timer records to be able to modify them.
-      for (const timer of windowTimers.filter((t) => t.positive && t.id.startsWith(id))) {
+      for (const timer of windowTimers.filter((t) => t.positive && isSelfOrDescendant(t.id, id))) {
         records.push({
           start: timer.start,
           end: timer.end > 0 ? timer.end : cap,
@@ -170,7 +171,7 @@ export const useTimerStore = defineStore(
         const start = timer.start;
         const end = timer.end > 0 ? timer.end : cap;
         for (const r of records) {
-          if (r.id.startsWith(timer.id)) {
+          if (isSelfOrDescendant(r.id, timer.id)) {
             if (start >= r.start && start < r.end) {
               // Timer overlaps the start.
               if (end < r.end) {
@@ -204,22 +205,44 @@ export const useTimerStore = defineStore(
 
     const getTime = (id: string) => getTimeInRange(id, dayStarts.value, dayEnds.value);
 
-    // One rollup total per tag id that has any timer record on the viewed day, sorted highest
-    // first. An empty string id rolls up to every tag, used for the day's grand total.
+    // One rollup total per tag id that has any time on the viewed day, in depth-first tree order
+    // (a parent immediately followed by its children) so a tag with only sub-timers running
+    // still shows up, ahead of the children that actually account for its time.
     const reportEntries = computed(() => {
       const start = reportDayStart.value;
       const end = reportDayEnd.value;
-      const ids = new Set(
-        timers.value.filter((t) => t.start >= start && t.start < end).map((t) => t.id),
+      const entries: Array<{ id: string; time: number }> = [];
+      const covered = new Set<string>();
+
+      const visit = (parent: string) => {
+        for (const tag of getTags(parent)) {
+          const id = `${tag.parent}//${tag.name}`;
+          covered.add(id);
+          const time = getTimeInRange(id, start, end);
+          if (time > 0) {
+            entries.push({ id, time });
+          }
+          visit(id);
+        }
+      };
+      visit("");
+
+      // A timer whose tag was since deleted rolls up into nothing above, so it would otherwise
+      // vanish from the report despite still counting toward the day's grand total.
+      const orphanIds = new Set(
+        timers.value
+          .filter((t) => t.start >= start && t.start < end)
+          .map((t) => t.id)
+          .filter((id) => ![...covered].some((c) => isSelfOrDescendant(id, c))),
       );
-      const entries = [];
-      for (const id of ids) {
+      for (const id of orphanIds) {
         const time = getTimeInRange(id, start, end);
         if (time > 0) {
           entries.push({ id, time });
         }
       }
-      return entries.sort((a, b) => b.time - a.time);
+
+      return entries;
     });
 
     const reportDayTotal = computed(() =>

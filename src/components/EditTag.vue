@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTimerStore } from "../timerStore";
 import ModalDialog from "./ModalDialog.vue";
+import { isSelfOrDescendant } from "../helpers";
 import { computed, ref } from "vue";
 
 const store = useTimerStore();
@@ -39,7 +40,7 @@ const updateTag = (oldId: string, tag: { name: string; parent: string; descripti
   for (const timer of store.timers) {
     if (timer.id === oldId) {
       timer.id = newId;
-    } else if (timer.id.startsWith(`${oldId}//`)) {
+    } else if (isSelfOrDescendant(timer.id, oldId)) {
       timer.id = newId + timer.id.slice(oldId.length);
     }
   }
