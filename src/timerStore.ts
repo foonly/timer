@@ -123,6 +123,20 @@ export const useTimerStore = defineStore(
           !timer.positive && timer.end === 0 && (timer.id === id || id.startsWith(`${timer.id}//`)),
       );
     };
+    // Mirrors isPausedNow: `id` can be frozen by a pause on itself or on any
+    // ancestor, so resuming has to close every active pause that covers it,
+    // not just one started on `id` exactly.
+    const resumeTimer = (id: string) => {
+      for (const timer of timers.value) {
+        if (
+          !timer.positive &&
+          timer.end === 0 &&
+          (timer.id === id || id.startsWith(`${timer.id}//`))
+        ) {
+          timer.end = Date.now();
+        }
+      }
+    };
     const hasActiveDescendant = (id: string) => {
       return timers.value.some(
         (timer) =>
@@ -210,6 +224,7 @@ export const useTimerStore = defineStore(
       startTimer,
       stopTimer,
       isRunning,
+      resumeTimer,
       getStatus,
       getTime,
     };

@@ -44,10 +44,10 @@ const status = computed(() => store.getStatus(id));
         <template v-else>
           <Stop class="icon clickable" title="Stop" @click="store.stopTimer(id)" />
           <Play
-            v-if="store.isRunning(id, false)"
+            v-if="status === 'paused'"
             class="icon clickable"
             title="Resume"
-            @click="store.stopTimer(id, false)"
+            @click="store.resumeTimer(id)"
           />
           <Pause v-else class="icon clickable" title="Pause" @click="store.startTimer(id, false)" />
         </template>
