@@ -5,6 +5,8 @@ import TimerApp from "./TimerApp.vue";
 import "./style.css";
 import { initDarkLightMode } from "./darkLight";
 import { startInterval } from "./helpers";
+import { useTimerStore } from "./timerStore";
+import { findRedundantTimers } from "./sanityCheck";
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
@@ -23,3 +25,13 @@ app.mount("#app");
 
 startInterval();
 initDarkLightMode();
+
+const redundantTimers = findRedundantTimers(useTimerStore().timers);
+if (redundantTimers.length > 0) {
+  console.warn(
+    `Sanity check: found ${redundantTimers.length} redundant timer record(s) - fully covered ` +
+      "by another timer on the same tag and direction, so they don't affect any displayed time " +
+      "and can be safely removed:",
+    redundantTimers,
+  );
+}
