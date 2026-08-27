@@ -227,16 +227,57 @@ export const useTimerStore = defineStore(
     const getTime = (id: string) => getTimeInRange(id, dayStarts.value, dayEnds.value);
 
     // One rollup total per tag id that has any time on the viewed day, in depth-first tree order
-    // (a parent immediately followed by its children) so a tag with only sub-timers running
-    // still shows up, ahead of the children that actually account for its time.
+    // (a parent immediately followed by its children, siblings by when their subtree's activity
+    // first started that day) so a tag with only sub-timers running still shows up, ahead of the
+    // children that actually account for its time.
+    //
+    // A timer whose tag has since been deleted has no matching tag entry any more, so it can't be
+    // found via getTags - it's treated as a "virtual" node instead, recursed into as its own
+    // parent id (sliced from its id, same as how it was built) and sorted into its live siblings
+    // by the same key, so deleting a tag to tidy up the tag list keeps that tag's place in the
+    // report rather than bumping it to the very end. A rename doesn't hit this path: it updates
+    // the timer's id in place, so it's still "known". Deleting a tag also deletes its whole
+    // subtree at once, so a deleted id only ever has further deleted descendants, never live ones.
     const reportEntries = computed(() => {
       const start = reportDayStart.value;
       const end = reportDayEnd.value;
       const entries: Array<{ id: string; time: number }> = [];
 
+      const knownTagIds = new Set(tags.value.map((tag) => `${tag.parent}//${tag.name}`));
+      const parentOf = (id: string) => id.slice(0, id.lastIndexOf("//"));
+
+      // A deleted id whose own tag never had a direct timer (only a deleted descendant did, e.g.
+      // a tag that only ever showed sub-timer activity) has no timer record of its own to spot it
+      // by - so also synthesize every such intermediate ancestor, up to the first id that's still
+      // a known tag (or the root), so the walk below can still reach that descendant at all.
+      const deletedLeafIds = new Set(
+        timers.value
+          .filter((t) => t.start >= start && t.start < end)
+          .map((t) => t.id)
+          .filter((id) => !knownTagIds.has(id)),
+      );
+      const deletedIds = new Set(deletedLeafIds);
+      for (const id of deletedLeafIds) {
+        let ancestor = parentOf(id);
+        while (ancestor !== "" && !knownTagIds.has(ancestor) && !deletedIds.has(ancestor)) {
+          deletedIds.add(ancestor);
+          ancestor = parentOf(ancestor);
+        }
+      }
+      const earliestActivity = (id: string) => {
+        const starts = timers.value
+          .filter((t) => t.start >= start && t.start < end && isSelfOrDescendant(t.id, id))
+          .map((t) => t.start);
+        return starts.length ? Math.min(...starts) : Infinity;
+      };
+
       const visit = (parent: string) => {
-        for (const tag of getTags(parent)) {
-          const id = `${tag.parent}//${tag.name}`;
+        const liveIds = getTags(parent).map((tag) => `${tag.parent}//${tag.name}`);
+        const deletedChildIds = [...deletedIds].filter((id) => parentOf(id) === parent);
+        const children = [...liveIds, ...deletedChildIds].sort(
+          (a, b) => earliestActivity(a) - earliestActivity(b),
+        );
+        for (const id of children) {
           const time = getTimeInRange(id, start, end);
           if (time > 0) {
             entries.push({ id, time });
@@ -245,25 +286,6 @@ export const useTimerStore = defineStore(
         }
       };
       visit("");
-
-      // A timer whose tag has since been deleted has no matching tag entry any more, so the walk
-      // above never produces a row for it - even when a surviving ancestor's own row already
-      // rolls its time in. Keeping its own row too (same as any other parent+child pair) is what
-      // lets a tag be deleted to tidy up the tag list without losing its history from the report.
-      // A rename doesn't hit this path: it updates the timer's id in place, so it's still "known".
-      const knownTagIds = new Set(tags.value.map((tag) => `${tag.parent}//${tag.name}`));
-      const deletedTagIds = new Set(
-        timers.value
-          .filter((t) => t.start >= start && t.start < end)
-          .map((t) => t.id)
-          .filter((id) => !knownTagIds.has(id)),
-      );
-      for (const id of [...deletedTagIds].sort()) {
-        const time = getTimeInRange(id, start, end);
-        if (time > 0) {
-          entries.push({ id, time });
-        }
-      }
 
       return entries;
     });
