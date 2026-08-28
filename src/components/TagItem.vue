@@ -49,7 +49,7 @@ const status = computed(() => store.getStatus(id));
           @click="store.stopTimer(id)"
         />
         <Resume
-          v-if="status === 'paused'"
+          v-if="status === 'paused' && store.isRunning(id, false)"
           class="icon clickable"
           title="Resume"
           @click="store.resumeTimer(id)"
