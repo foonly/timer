@@ -7,6 +7,9 @@ import {
   getTimeFromDays,
   formatDayLabel,
   isSelfOrDescendant,
+  timerOverlapsRange,
+  DAY_CUTOFF_HOUR,
+  MS_PER_DAY,
 } from "./helpers";
 import { randomTagName } from "./randomNames";
 
@@ -24,13 +27,13 @@ export const useTimerStore = defineStore(
 
     // Getters
     const dayEnds = computed(() => {
-      return dayStarts.value + 24 * 3600 * 1000;
+      return dayStarts.value + MS_PER_DAY;
     });
 
-    const todayDayNumber = computed(() => getDayNumber(4, now.value));
+    const todayDayNumber = computed(() => getDayNumber(DAY_CUTOFF_HOUR, now.value));
     const reportDayNumber = computed(() => viewedDayNumber.value ?? todayDayNumber.value);
     const reportDayStart = computed(() => getTimeFromDays(reportDayNumber.value));
-    const reportDayEnd = computed(() => reportDayStart.value + 24 * 3600 * 1000);
+    const reportDayEnd = computed(() => reportDayStart.value + MS_PER_DAY);
     const isViewingToday = computed(() => reportDayNumber.value === todayDayNumber.value);
     const reportDayLabel = computed(() =>
       formatDayLabel(reportDayNumber.value, todayDayNumber.value),
@@ -173,24 +176,32 @@ export const useTimerStore = defineStore(
 
     // Core interval-subtraction algorithm, bounded to an arbitrary [rangeStart, rangeEnd) window
     // so it can serve both the live "today" total and a fixed historical day's report.
+    //
+    // Filtering (and clipping) by overlap rather than by `t.start` alone matters for a timer that
+    // was already running when rangeStart hit (e.g. one still open from before the 04:00 day
+    // cutoff): it must contribute its portion inside this window even though it started earlier,
+    // and correspondingly must NOT contribute the portion outside this window - otherwise that
+    // time either vanishes (excluded from every day) or gets double-counted (attributed both to
+    // the day it started on and the day it's viewed from).
     const getTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
-      const cap = Math.min(now.value, rangeEnd);
-      const windowTimers = timers.value.filter((t) => t.start >= rangeStart && t.start < rangeEnd);
+      const clipToRange = (t: { start: number; end: number }) => ({
+        start: Math.max(t.start, rangeStart),
+        end: Math.min(t.end > 0 ? t.end : now.value, rangeEnd),
+      });
+
+      const windowTimers = timers.value.filter((t) =>
+        timerOverlapsRange(t, rangeStart, rangeEnd, now.value),
+      );
 
       const records: Array<{ start: number; end: number; id: string }> = [];
       // Clone the timer records to be able to modify them.
       for (const timer of windowTimers.filter((t) => t.positive && isSelfOrDescendant(t.id, id))) {
-        records.push({
-          start: timer.start,
-          end: timer.end > 0 ? timer.end : cap,
-          id: timer.id,
-        });
+        records.push({ ...clipToRange(timer), id: timer.id });
       }
 
       // Subtract negative timers from the records.
       for (const timer of windowTimers.filter((t) => !t.positive)) {
-        const start = timer.start;
-        const end = timer.end > 0 ? timer.end : cap;
+        const { start, end } = clipToRange(timer);
         for (const r of records) {
           if (isSelfOrDescendant(r.id, timer.id)) {
             if (start >= r.start && start < r.end) {
@@ -252,7 +263,7 @@ export const useTimerStore = defineStore(
       // a known tag (or the root), so the walk below can still reach that descendant at all.
       const deletedLeafIds = new Set(
         timers.value
-          .filter((t) => t.start >= start && t.start < end)
+          .filter((t) => timerOverlapsRange(t, start, end, now.value))
           .map((t) => t.id)
           .filter((id) => !knownTagIds.has(id)),
       );
@@ -266,7 +277,9 @@ export const useTimerStore = defineStore(
       }
       const earliestActivity = (id: string) => {
         const starts = timers.value
-          .filter((t) => t.start >= start && t.start < end && isSelfOrDescendant(t.id, id))
+          .filter(
+            (t) => timerOverlapsRange(t, start, end, now.value) && isSelfOrDescendant(t.id, id),
+          )
           .map((t) => t.start);
         return starts.length ? Math.min(...starts) : Infinity;
       };

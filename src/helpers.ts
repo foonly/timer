@@ -38,7 +38,28 @@ export function startInterval() {
   }, 1000);
 }
 
-export function getDayStart(time = Date.now(), offset = 4) {
+// The hour at which a new "day" begins for reporting purposes, so a late-night session before
+// this hour still counts as the previous day. Threaded through as the default `offset` on every
+// function below rather than baked into the math, so a caller could still view a different cutoff.
+export const DAY_CUTOFF_HOUR = 4;
+
+export const MS_PER_DAY = 24 * 3600 * 1000;
+
+// Whether `timer` has any overlap with `[rangeStart, rangeEnd)` - i.e. whether any of its time
+// falls inside that window, even if it started before `rangeStart` or (being still open) will run
+// past `rangeEnd`. `now` is passed in (rather than read from the store) so this stays a pure
+// function usable from anywhere a timer-like record needs to be tested against a day window.
+export function timerOverlapsRange(
+  timer: { start: number; end: number },
+  rangeStart: number,
+  rangeEnd: number,
+  now: number,
+): boolean {
+  const effectiveEnd = timer.end > 0 ? timer.end : now;
+  return timer.start < rangeEnd && effectiveEnd > rangeStart;
+}
+
+export function getDayStart(time = Date.now(), offset = DAY_CUTOFF_HOUR) {
   const date = new Date(time);
   const sub = date.getHours() < offset;
   date.setHours(offset);
@@ -56,15 +77,15 @@ export function getDayStart(time = Date.now(), offset = 4) {
 // getTimeFromDays both count from this exact instant so they stay exact inverses of each other.
 const dayZeroBoundary = (offset: number) => getDayStart(new Date(2024, 0, 1).getTime(), offset);
 
-export function getDayNumber(offset = 4, time = Date.now()) {
+export function getDayNumber(offset = DAY_CUTOFF_HOUR, time = Date.now()) {
   // A day isn't always exactly 24h across a DST transition, so this ms-based diff drifts by
   // about an hour per transition it spans - fine, Math.round still lands on the right day count
   // as long as that drift stays under 12h (true for any realistic time range here).
   const diff = getDayStart(time, offset) - dayZeroBoundary(offset);
-  return Math.round(diff / (1000 * 3600 * 24));
+  return Math.round(diff / MS_PER_DAY);
 }
 
-export function getTimeFromDays(days: number, offset = 4) {
+export function getTimeFromDays(days: number, offset = DAY_CUTOFF_HOUR) {
   // Unlike getDayNumber, this must land on an exact boundary, so it walks calendar days via
   // setDate (DST-safe, preserves the local time-of-day) from day 0's boundary instead of adding
   // days * 24h in ms.
@@ -73,7 +94,7 @@ export function getTimeFromDays(days: number, offset = 4) {
   return date.getTime();
 }
 
-export function formatDayLabel(dayNumber: number, todayNumber: number, offset = 4) {
+export function formatDayLabel(dayNumber: number, todayNumber: number, offset = DAY_CUTOFF_HOUR) {
   if (dayNumber === todayNumber) {
     return "Today";
   }
