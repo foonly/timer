@@ -2,22 +2,26 @@
 import ListTags from "./components/ListTags.vue";
 import DailyReport from "./components/DailyReport.vue";
 import StatusDot from "./components/StatusDot.vue";
+import SettingsPage from "./components/SettingsPage.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import AddTagRow from "./components/AddTagRow.vue";
 import type { timerStatus } from "./types";
 import { statusLabels } from "./helpers";
+import { useTimerStore } from "./timerStore";
 
 const legendStatuses: timerStatus[] = ["running", "paused", "sub-running", "idle"];
+const store = useTimerStore();
 </script>
 
 <template>
   <div class="app-root">
     <aside class="icons">
       <DarkLight class="icon clickable" @click="toggleDarkLightMode" />
-      <Settings class="icon clickable" />
+      <Settings class="icon clickable" @click="store.openModal('settings')" />
     </aside>
+    <SettingsPage v-if="store.isModal('settings')" />
     <h1>Foonlys Hierarchical Timer</h1>
     <div class="status-legend">
       <span class="status-legend-item" v-for="status in legendStatuses" :key="status">
