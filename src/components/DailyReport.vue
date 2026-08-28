@@ -31,6 +31,10 @@ const store = useTimerStore();
       />
     </div>
     <div class="report-total">
+      <span>Time active</span>
+      <TimeDisplay :time="store.reportDayActiveTime" />
+    </div>
+    <div class="report-total report-total-secondary">
       <span>Total tracked</span>
       <TimeDisplay :time="store.reportDayTotal" />
     </div>
@@ -89,6 +93,16 @@ const store = useTimerStore();
     font-size: 0.9rem;
     font-weight: normal;
     opacity: 0.7;
+  }
+}
+.report-total-secondary {
+  margin: -0.75rem 0 1rem;
+  font-size: 1rem;
+  font-weight: normal;
+  opacity: 0.7;
+
+  & span {
+    font-size: 0.85rem;
   }
 }
 .empty {

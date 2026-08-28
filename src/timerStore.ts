@@ -173,8 +173,12 @@ export const useTimerStore = defineStore(
       return "idle";
     };
 
-    // Core interval-subtraction algorithm, bounded to an arbitrary [rangeStart, rangeEnd) window
-    // so it can serve both the live "today" total and a fixed historical day's report.
+    // Core interval-subtraction step, bounded to an arbitrary [rangeStart, rangeEnd) window so it
+    // can serve both the live "today" total and a fixed historical day's report. Returns the
+    // still-open-ended list of positive records for `id` and its descendants, each clipped to the
+    // window and with any overlapping negative (pause) timer already carved out - callers decide
+    // separately whether to sum these raw (double-counting concurrent records) or merge them into
+    // a deduped union.
     //
     // Filtering (and clipping) by overlap rather than by `t.start` alone matters for a timer that
     // was already running when rangeStart hit (e.g. one still open from before the 04:00 day
@@ -182,7 +186,7 @@ export const useTimerStore = defineStore(
     // and correspondingly must NOT contribute the portion outside this window - otherwise that
     // time either vanishes (excluded from every day) or gets double-counted (attributed both to
     // the day it started on and the day it's viewed from).
-    const getTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
+    const getRecordsInRange = (id: string, rangeStart: number, rangeEnd: number) => {
       const clipToRange = (t: { start: number; end: number }) => ({
         start: Math.max(t.start, rangeStart),
         end: Math.min(t.end > 0 ? t.end : now.value, rangeEnd),
@@ -218,18 +222,34 @@ export const useTimerStore = defineStore(
         }
       }
 
-      // Add up the remaining records.
+      return records;
+    };
+
+    // Sum of each record's own duration, so two timers tracked concurrently (e.g. on unrelated
+    // tags) each contribute their full length even though they cover the same wall-clock time.
+    const getRawTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
+      return getRecordsInRange(id, rangeStart, rangeEnd).reduce(
+        (sum, r) => sum + (r.end - r.start),
+        0,
+      );
+    };
+
+    // Union of the records' time ranges, so concurrent/overlapping records (e.g. a broad tag and a
+    // nested sub-tag both tracked at once) count that wall-clock time only once. `coveredUntil`
+    // tracks the furthest point the union has reached so far - a record that ends before that point
+    // is already fully covered and contributes nothing, and one that extends past it only
+    // contributes the new, not-yet-covered portion.
+    const getTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
       let time = 0;
-      let lastEnd = 0;
-      for (const r of records.sort((a, b) => a.start - b.start)) {
-        if (r.start < lastEnd && r.end > lastEnd) {
-          // Records are overlapping.
-          time += r.end - lastEnd;
-        } else {
-          // No overlap.
-          time += r.end - r.start;
+      let coveredUntil = 0;
+      for (const r of getRecordsInRange(id, rangeStart, rangeEnd).sort(
+        (a, b) => a.start - b.start,
+      )) {
+        if (r.end <= coveredUntil) {
+          continue;
         }
-        lastEnd = r.end;
+        time += r.end - Math.max(r.start, coveredUntil);
+        coveredUntil = r.end;
       }
       return time;
     };
@@ -302,7 +322,15 @@ export const useTimerStore = defineStore(
       return entries;
     });
 
+    // "Total tracked": every tracked timer counts its full length, even if two ran concurrently
+    // (e.g. on unrelated tags) - a measure of total logged effort, not wall-clock time.
     const reportDayTotal = computed(() =>
+      getRawTimeInRange("", reportDayStart.value, reportDayEnd.value),
+    );
+
+    // "Time active": the wall-clock time during which at least one timer was running that day -
+    // concurrent/overlapping timers are merged so that time isn't counted twice.
+    const reportDayActiveTime = computed(() =>
       getTimeInRange("", reportDayStart.value, reportDayEnd.value),
     );
 
@@ -315,6 +343,7 @@ export const useTimerStore = defineStore(
       reportDayLabel,
       reportEntries,
       reportDayTotal,
+      reportDayActiveTime,
       goToPreviousDay,
       goToNextDay,
       goToToday,
