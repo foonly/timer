@@ -1,6 +1,17 @@
 # Changelog
 
-### 0.1.1 (2026-08-28)
+## 0.2.0 (2026-08-28)
+
+#### Features
+
+- settings: add settings modal component (eb5fe30)
+
+#### Refactor
+
+- clock: move time tracking out of Pinia store (138edd9)
+- helpers: improve timer range overlap and reporting logic (535380e)
+
+### v0.1.1 (2026-08-28)
 
 #### Bug Fixes
 
