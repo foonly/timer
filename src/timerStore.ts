@@ -12,6 +12,7 @@ import {
   MS_PER_DAY,
 } from "./helpers";
 import { randomTagName } from "./randomNames";
+import { now, dayStarts } from "./clock";
 
 export const useTimerStore = defineStore(
   "timer",
@@ -19,8 +20,6 @@ export const useTimerStore = defineStore(
     const tags = ref(<fhtTag[]>[]);
     const timers = ref(<fhtTimer[]>[]);
     const modal = ref("");
-    const now = ref(Date.now());
-    const dayStarts = ref(0);
     // null means "today" and tracks the real day as it advances; a number pins the report to
     // that specific day so browsing history doesn't get yanked forward by a real day rollover.
     const viewedDayNumber = ref<number | null>(null);
@@ -311,8 +310,6 @@ export const useTimerStore = defineStore(
       tags,
       timers,
       modal,
-      now,
-      dayStarts,
       dayEnds,
       isViewingToday,
       reportDayLabel,

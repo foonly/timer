@@ -4,7 +4,7 @@ import { createApp } from "vue";
 import TimerApp from "./TimerApp.vue";
 import "./style.css";
 import { initDarkLightMode } from "./darkLight";
-import { startInterval } from "./helpers";
+import { startClock } from "./clock";
 import { useTimerStore } from "./timerStore";
 import { findRedundantTimers } from "./sanityCheck";
 
@@ -23,7 +23,7 @@ app.directive("focus", {
 app.use(pinia);
 app.mount("#app");
 
-startInterval();
+startClock();
 initDarkLightMode();
 
 const redundantTimers = findRedundantTimers(useTimerStore().timers);

@@ -1,4 +1,3 @@
-import { useTimerStore } from "./timerStore";
 import type { timerStatus } from "./types";
 
 export function modalName(id: string, ...name: string[]): string {
@@ -21,21 +20,6 @@ export const tagName = (id: string) => {
 // with "Child" as a string, but isn't nested under it) - the "//" boundary is what rules that out.
 export function isSelfOrDescendant(id: string, ancestor: string): boolean {
   return id === ancestor || id.startsWith(`${ancestor}//`);
-}
-
-let intervalHandle = 0;
-
-export function startInterval() {
-  if (intervalHandle > 0) {
-    clearInterval(intervalHandle);
-  }
-  intervalHandle = setInterval(() => {
-    const timerStore = useTimerStore();
-    timerStore.now = Date.now();
-    if (timerStore.now >= timerStore.dayEnds) {
-      timerStore.dayStarts = getDayStart();
-    }
-  }, 1000);
 }
 
 // The hour at which a new "day" begins for reporting purposes, so a late-night session before
