@@ -41,3 +41,38 @@ jobs:
 
       - name: Deploy Dist
         run: rsync -rlci --delete dist webmaster@cloudberry.uplink.fi:/var/www/timer/
+
+  build-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Test
+        working-directory: backend
+        run: go vet ./... && go test ./...
+
+      - name: Build
+        working-directory: backend
+        run: go build -o bin/timer-api ./cmd/api
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          name: id_ed25519
+          known_hosts: ${{ secrets.CLOUDBERRY_HOSTS }}
+
+      - name: Deploy binary and migrations
+        run: |
+          rsync -rlci backend/migrations webmaster@cloudberry.uplink.fi:/opt/timer/backend/
+          rsync -lci backend/bin/timer-api webmaster@cloudberry.uplink.fi:/opt/timer/backend/bin/timer-api
+
+      - name: Restart service
+        run: ssh webmaster@cloudberry.uplink.fi 'sudo systemctl restart timer-api'

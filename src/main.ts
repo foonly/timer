@@ -6,6 +6,8 @@ import "./style.css";
 import { initDarkLightMode } from "./darkLight";
 import { startClock } from "./clock";
 import { useTimerStore } from "./timerStore";
+import { useAuthStore } from "./authStore";
+import { startSyncEngine } from "./syncService";
 import { findRedundantTimers } from "./sanityCheck";
 
 const pinia = createPinia();
@@ -25,6 +27,10 @@ app.mount("#app");
 
 startClock();
 initDarkLightMode();
+
+useTimerStore().migrateUuids();
+void useAuthStore().checkSession();
+startSyncEngine();
 
 const redundantTimers = findRedundantTimers(useTimerStore().timers);
 if (redundantTimers.length > 0) {

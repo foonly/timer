@@ -1,0 +1,20 @@
+[Unit]
+Description=Timer API Service
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=timer
+Group=timer
+WorkingDirectory=/opt/timer/backend
+ExecStart=/opt/timer/backend/bin/timer-api
+Restart=always
+RestartSec=5
+
+# Environment variables
+Environment=PORT=8080
+Environment=DATABASE_URL=postgres://timer:CHANGE_ME@localhost:5432/timer?sslmode=disable
+Environment=CORS_ORIGIN=https://timer.uplink.fi
+
+[Install]
+WantedBy=multi-user.target

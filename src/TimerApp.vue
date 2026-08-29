@@ -3,6 +3,7 @@ import ListTags from "./components/ListTags.vue";
 import DailyReport from "./components/DailyReport.vue";
 import StatusDot from "./components/StatusDot.vue";
 import SettingsPage from "./components/SettingsPage.vue";
+import SyncStatus from "./components/SyncStatus.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
@@ -18,6 +19,7 @@ const store = useTimerStore();
 <template>
   <div class="app-root">
     <aside class="icons">
+      <SyncStatus />
       <DarkLight class="icon clickable" @click="toggleDarkLightMode" />
       <Settings class="icon clickable" @click="store.openModal('settings')" />
     </aside>
@@ -49,6 +51,7 @@ aside.icons {
   right: 1rem;
   top: 1rem;
   opacity: 0.5;
+  align-items: center;
 }
 .status-legend {
   justify-content: center;

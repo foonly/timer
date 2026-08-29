@@ -13,6 +13,8 @@ import {
 } from "./helpers";
 import { randomTagName } from "./randomNames";
 import { now, dayStarts } from "./clock";
+import { useSyncStore } from "./syncStore";
+import type { SyncEvent } from "./sync/events";
 
 export const useTimerStore = defineStore(
   "timer",
@@ -44,26 +46,254 @@ export const useTimerStore = defineStore(
         return tag.parent === parentTag;
       });
     };
-    const addTag = (parent: string, name: string, description = "") => {
-      const tag = tagSchema.parse({ parent, name, description });
+
+    const pathOf = (tag: { parent: string; name: string }) => `${tag.parent}//${tag.name}`;
+
+    // Resolves a tag's own path into its uuid, for building sync-event payloads. `""` (root) has
+    // no owning tag, so it maps to `null` rather than being looked up.
+    const resolveTagUuid = (path: string): string | null => {
+      if (path === "") {
+        return null;
+      }
+      return tags.value.find((t) => pathOf(t) === path)?.uuid ?? null;
+    };
+
+    const findTagPathByUuid = (uuid: string): string | undefined => {
+      const tag = tags.value.find((t) => t.uuid === uuid);
+      return tag ? pathOf(tag) : undefined;
+    };
+
+    // Shared by addTag (local) and applyRemoteEvent's tag_added handling: idempotent on uuid, so
+    // replaying an already-known tag_added (e.g. re-seeing your own event on the next pull) is a
+    // harmless no-op.
+    const insertTag = (
+      uuid: string,
+      parent: string,
+      name: string,
+      description: string,
+      updatedAt: number,
+    ) => {
+      const existing = tags.value.find((t) => t.uuid === uuid);
+      if (existing) {
+        return existing;
+      }
+      const tag = tagSchema.parse({ uuid, parent, name, description, updatedAt });
       tags.value.push(tag);
       return tag;
     };
-    const removeTag = (remove: string) => {
+
+    // Shared by updateTag (local) and applyRemoteEvent's tag_updated handling. Mutates `tag` in
+    // place (preserving its uuid/object identity) and, on an actual rename/reparent, cascades the
+    // path-string rewrite across every descendant tag and timer - mirroring the existing
+    // timer-id cascade below, which already correctly walks the whole subtree via
+    // isSelfOrDescendant rather than just direct children.
+    const renameTagInPlace = (
+      tag: fhtTag,
+      fields: { name: string; parent: string; description: string },
+      timestamp: number,
+    ) => {
+      const id = pathOf(tag);
+      const newId = `${fields.parent}//${fields.name}`;
+      tag.name = fields.name;
+      tag.description = fields.description;
+      tag.parent = fields.parent;
+      tag.updatedAt = timestamp;
+
+      if (newId === id) {
+        return;
+      }
+      for (const other of tags.value) {
+        if (other.uuid === tag.uuid) {
+          continue;
+        }
+        if (isSelfOrDescendant(other.parent, id)) {
+          other.parent = other.parent === id ? newId : newId + other.parent.slice(id.length);
+        }
+      }
+      for (const timer of timers.value) {
+        if (timer.id === id) {
+          timer.id = newId;
+        } else if (isSelfOrDescendant(timer.id, id)) {
+          timer.id = newId + timer.id.slice(id.length);
+        }
+      }
+    };
+
+    // Shared by removeTag (local) and applyRemoteEvent's tag_removed handling - the actual
+    // subtree-stop-then-filter mutation, without the local-only modal/event-emission side effects.
+    const removeTagInternal = (remove: string, stoppedAt: number) => {
       // Once the tag is gone there's no card left to click Stop/Resume on, so any timer still
       // open on it or a descendant would otherwise run (or stay paused) forever, uncontrollably.
-      const stoppedAt = Date.now();
       for (const timer of timers.value) {
         if (timer.end === 0 && isSelfOrDescendant(timer.id, remove)) {
           timer.end = stoppedAt;
         }
       }
-      tags.value = tags.value.filter((tag) => {
-        const id = `${tag.parent}//${tag.name}`;
-        return !isSelfOrDescendant(id, remove);
-      });
-      modal.value = "";
+      tags.value = tags.value.filter((tag) => !isSelfOrDescendant(pathOf(tag), remove));
     };
+
+    const addTag = (parent: string, name: string, description = "") => {
+      const uuid = crypto.randomUUID();
+      const updatedAt = Date.now();
+      const tag = insertTag(uuid, parent, name, description, updatedAt);
+      useSyncStore().enqueueEvent({
+        id: crypto.randomUUID(),
+        type: "tag_added",
+        entityId: uuid,
+        deviceId: useSyncStore().deviceId,
+        timestamp: updatedAt,
+        payload: { uuid, parentUuid: resolveTagUuid(parent), name, description },
+      });
+      return tag;
+    };
+
+    const updateTag = (
+      id: string,
+      fields: { name: string; parent: string; description: string },
+    ) => {
+      const tag = tags.value.find((t) => pathOf(t) === id);
+      if (!tag) {
+        return;
+      }
+      const timestamp = Date.now();
+      renameTagInPlace(tag, fields, timestamp);
+      useSyncStore().enqueueEvent({
+        id: crypto.randomUUID(),
+        type: "tag_updated",
+        entityId: tag.uuid,
+        deviceId: useSyncStore().deviceId,
+        timestamp,
+        payload: {
+          uuid: tag.uuid,
+          parentUuid: resolveTagUuid(fields.parent),
+          name: fields.name,
+          description: fields.description,
+        },
+      });
+    };
+
+    const removeTag = (remove: string) => {
+      const removedTag = tags.value.find((t) => pathOf(t) === remove);
+      const stoppedAt = Date.now();
+      removeTagInternal(remove, stoppedAt);
+      modal.value = "";
+      if (removedTag) {
+        useSyncStore().enqueueEvent({
+          id: crypto.randomUUID(),
+          type: "tag_removed",
+          entityId: removedTag.uuid,
+          deviceId: useSyncStore().deviceId,
+          timestamp: stoppedAt,
+          payload: { uuid: removedTag.uuid },
+        });
+      }
+    };
+
+    // Backfills `uuid`/`updatedAt` on any tag/timer that predates the sync feature - persisted
+    // state is written straight into these refs on load, bypassing tagSchema/timerSchema's zod
+    // defaults, so this has to run explicitly once at startup (see main.ts) before anything else
+    // touches tags/timers.
+    const migrateUuids = () => {
+      for (const tag of tags.value) {
+        if (!tag.uuid) {
+          tag.uuid = crypto.randomUUID();
+        }
+        if (!tag.updatedAt) {
+          tag.updatedAt = Date.now();
+        }
+      }
+      for (const timer of timers.value) {
+        if (!timer.uuid) {
+          timer.uuid = crypto.randomUUID();
+        }
+      }
+    };
+
+    // Applies an event pulled from another device onto local state, by calling straight into the
+    // same tags/timers arrays the local actions above use - so there is exactly one place per
+    // mutation "shape" (insertTag/renameTagInPlace/removeTagInternal), just two entry points
+    // (local action vs. here) into it. Deliberately never touches the sync store's pendingEvents:
+    // that's what makes an infinite local<->remote echo structurally impossible, rather than
+    // something that has to be remembered as a per-call flag.
+    const applyRemoteEvent = (event: SyncEvent) => {
+      switch (event.type) {
+        case "tag_added": {
+          const parent = event.payload.parentUuid
+            ? (findTagPathByUuid(event.payload.parentUuid) ?? "")
+            : "";
+          insertTag(
+            event.payload.uuid,
+            parent,
+            event.payload.name,
+            event.payload.description,
+            event.timestamp,
+          );
+          return;
+        }
+        case "tag_updated": {
+          const parent = event.payload.parentUuid
+            ? (findTagPathByUuid(event.payload.parentUuid) ?? "")
+            : "";
+          const tag = tags.value.find((t) => t.uuid === event.payload.uuid);
+          if (!tag) {
+            // Its tag_added hasn't been applied yet (events can arrive out of order) - treat this
+            // as the creation, the freshest fields we have for it either way.
+            insertTag(
+              event.payload.uuid,
+              parent,
+              event.payload.name,
+              event.payload.description,
+              event.timestamp,
+            );
+            return;
+          }
+          if (event.timestamp <= tag.updatedAt) {
+            return; // a newer local edit wins (last-write-wins)
+          }
+          renameTagInPlace(
+            tag,
+            { name: event.payload.name, parent, description: event.payload.description },
+            event.timestamp,
+          );
+          return;
+        }
+        case "tag_removed": {
+          const path = findTagPathByUuid(event.payload.uuid);
+          if (path) {
+            removeTagInternal(path, event.timestamp);
+          }
+          return;
+        }
+        case "timer_started": {
+          if (timers.value.some((t) => t.uuid === event.payload.uuid)) {
+            return;
+          }
+          const path = findTagPathByUuid(event.payload.tagUuid);
+          if (!path) {
+            console.warn(`Sync: unknown tag for timer ${event.payload.uuid} - skipping`);
+            return;
+          }
+          const timer = timerSchema.parse({
+            id: path,
+            uuid: event.payload.uuid,
+            positive: event.payload.positive,
+            start: event.payload.start,
+          });
+          timers.value.push(timer);
+          return;
+        }
+        case "timer_stopped": {
+          // "First stop wins": if this timer is already closed (e.g. we closed it locally before
+          // seeing this remote event), leave its end time alone.
+          const timer = timers.value.find((t) => t.uuid === event.payload.uuid);
+          if (timer && timer.end === 0) {
+            timer.end = event.payload.end;
+          }
+          return;
+        }
+      }
+    };
+
     const goToPreviousDay = () => {
       viewedDayNumber.value = reportDayNumber.value - 1;
     };
@@ -95,22 +325,46 @@ export const useTimerStore = defineStore(
       return modal.value === modalName(id, ...name);
     };
     const startTimer = (id: string, positive = true) => {
-      const timer = timerSchema.parse({
-        id,
-        positive,
-        start: Date.now(),
-      });
+      const uuid = crypto.randomUUID();
+      const start = Date.now();
+      const timer = timerSchema.parse({ id, uuid, positive, start });
       timers.value.push(timer);
       now.value = Date.now();
+
+      const tagUuid = resolveTagUuid(id);
+      if (tagUuid === null) {
+        // Should be unreachable in practice - startTimer is always called with an existing tag's
+        // path - but if it ever isn't, drop the sync event rather than push a payload the backend
+        // can't resolve.
+        console.warn(`Sync: could not resolve tag for timer "${id}" - skipping sync event`);
+        return;
+      }
+      useSyncStore().enqueueEvent({
+        id: crypto.randomUUID(),
+        type: "timer_started",
+        entityId: uuid,
+        deviceId: useSyncStore().deviceId,
+        timestamp: start,
+        payload: { uuid, tagUuid, positive, start },
+      });
     };
     const stopTimer = (id: string, positive: boolean | undefined = undefined) => {
+      const stoppedAt = Date.now();
       for (const timer of timers.value) {
         if (
           timer.id === id &&
           timer.end === 0 &&
           (positive === undefined || timer.positive === positive)
         ) {
-          timer.end = Date.now();
+          timer.end = stoppedAt;
+          useSyncStore().enqueueEvent({
+            id: crypto.randomUUID(),
+            type: "timer_stopped",
+            entityId: timer.uuid,
+            deviceId: useSyncStore().deviceId,
+            timestamp: stoppedAt,
+            payload: { uuid: timer.uuid, end: stoppedAt },
+          });
         }
       }
     };
@@ -134,9 +388,18 @@ export const useTimerStore = defineStore(
     // ancestor, so resuming has to close every active pause that covers it,
     // not just one started on `id` exactly.
     const resumeTimer = (id: string) => {
+      const stoppedAt = Date.now();
       for (const timer of timers.value) {
         if (!timer.positive && timer.end === 0 && isSelfOrDescendant(id, timer.id)) {
-          timer.end = Date.now();
+          timer.end = stoppedAt;
+          useSyncStore().enqueueEvent({
+            id: crypto.randomUUID(),
+            type: "timer_stopped",
+            entityId: timer.uuid,
+            deviceId: useSyncStore().deviceId,
+            timestamp: stoppedAt,
+            payload: { uuid: timer.uuid, end: stoppedAt },
+          });
         }
       }
     };
@@ -349,7 +612,10 @@ export const useTimerStore = defineStore(
       goToToday,
       getTags,
       addTag,
+      updateTag,
       removeTag,
+      migrateUuids,
+      applyRemoteEvent,
       quickStartTag,
       openModal,
       closeModal,

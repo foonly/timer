@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useTimerStore } from "../timerStore";
 import ModalDialog from "./ModalDialog.vue";
-import { isSelfOrDescendant } from "../helpers";
 import { computed, ref } from "vue";
 
 const store = useTimerStore();
@@ -16,34 +15,15 @@ const description = ref(existingTag.value?.description ?? "");
 
 const submitted = () => {
   if (props.id && existingTag.value) {
-    updateTag(props.id, existingTag.value);
+    store.updateTag(props.id, {
+      name: name.value,
+      parent: existingTag.value.parent,
+      description: description.value,
+    });
   } else {
     store.addTag(props.parent, name.value, description.value);
   }
   resetForm();
-};
-
-const updateTag = (oldId: string, tag: { name: string; parent: string; description: string }) => {
-  const newId = `${tag.parent}//${name.value}`;
-  tag.name = name.value;
-  tag.description = description.value;
-
-  if (newId === oldId) {
-    return;
-  }
-
-  for (const other of store.tags) {
-    if (other.parent === oldId) {
-      other.parent = newId;
-    }
-  }
-  for (const timer of store.timers) {
-    if (timer.id === oldId) {
-      timer.id = newId;
-    } else if (isSelfOrDescendant(timer.id, oldId)) {
-      timer.id = newId + timer.id.slice(oldId.length);
-    }
-  }
 };
 
 const resetForm = () => {
