@@ -41,7 +41,7 @@ jobs:
 
       - name: Deploy Dist
         run: >-
-          rsync -rlci --delete dist
+          rsync -rlci --delete dist/
           ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.FRONTEND_DEPLOY_PATH }}
 
   build-backend:
