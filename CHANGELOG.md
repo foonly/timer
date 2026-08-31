@@ -1,6 +1,24 @@
 # Changelog
 
-## 0.2.0 (2026-08-28)
+## 0.3.0 (2026-08-31)
+
+#### Features
+
+- ui: enhance modal styling and add sync debouncing (9e3c74a)
+- timer: implement timer record editing and deletion (3a21274)
+- sync: implement multi-device backend sync (7a9d244)
+- data: expand adjective and noun lists for random name generation (72fe8b3)
+- timer: add active time tracking to daily report (54da347)
+
+#### Bug Fixes
+
+- tag: prevent resume when timer is inactive (a6f8ba0)
+
+#### Continuous Integration
+
+- github: use workflow variables for deployment configuration (eb1c474)
+
+## v0.2.0 (2026-08-28)
 
 #### Features
 
