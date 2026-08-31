@@ -16,6 +16,7 @@ export const timerDataSchema = z.object({
   positive: z.boolean().default(true),
   start: z.number(),
   end: z.number().default(0),
+  updatedAt: z.number().default(() => Date.now()),
 });
 export type simpleTimer = z.infer<typeof timerDataSchema>;
 

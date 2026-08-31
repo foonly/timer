@@ -17,10 +17,8 @@ const (
 	EventTagRemoved   = "tag_removed"
 	EventTimerStarted = "timer_started"
 	EventTimerStopped = "timer_stopped"
-	// EventTimerUpdated is reserved for a future retroactive-edit feature.
-	// Nothing emits it yet, but accepting the type now avoids a breaking
-	// change to this enum later.
 	EventTimerUpdated = "timer_updated"
+	EventTimerRemoved = "timer_removed"
 )
 
 var validEventTypes = map[string]bool{
@@ -30,6 +28,7 @@ var validEventTypes = map[string]bool{
 	EventTimerStarted: true,
 	EventTimerStopped: true,
 	EventTimerUpdated: true,
+	EventTimerRemoved: true,
 }
 
 // incomingEvent is the wire shape of one entry in a push request.
@@ -89,7 +88,7 @@ func (e incomingEvent) validate() error {
 		if p.UUID == uuid.Nil || p.TagUUID == uuid.Nil {
 			return fmt.Errorf("payload.uuid and payload.tagUuid are required for %s", e.Type)
 		}
-	case EventTimerStopped, EventTimerUpdated:
+	case EventTimerStopped, EventTimerUpdated, EventTimerRemoved:
 		if err := requireUUIDField(e.Payload, "uuid"); err != nil {
 			return fmt.Errorf("invalid payload for %s: %w", e.Type, err)
 		}

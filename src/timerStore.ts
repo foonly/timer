@@ -206,6 +206,9 @@ export const useTimerStore = defineStore(
         if (!timer.uuid) {
           timer.uuid = crypto.randomUUID();
         }
+        if (!timer.updatedAt) {
+          timer.updatedAt = timer.end || timer.start;
+        }
       }
     };
 
@@ -289,6 +292,26 @@ export const useTimerStore = defineStore(
           if (timer && timer.end === 0) {
             timer.end = event.payload.end;
           }
+          return;
+        }
+        case "timer_updated": {
+          // Unlike tag_updated, there's no sensible fallback insert here if the timer_started
+          // hasn't been seen yet - a bare edit payload has no tagUuid to resolve an id from - so
+          // just drop it; the eventual timer_started/timer_updated replay order isn't guaranteed,
+          // but this is a rare edge case (editing a record before its creation event arrives).
+          const timer = timers.value.find((t) => t.uuid === event.payload.uuid);
+          if (!timer || event.timestamp <= timer.updatedAt) {
+            return; // missing, or a newer local edit wins (last-write-wins)
+          }
+          timer.start = event.payload.start;
+          timer.end = event.payload.end;
+          timer.description = event.payload.description;
+          timer.positive = event.payload.positive;
+          timer.updatedAt = event.timestamp;
+          return;
+        }
+        case "timer_removed": {
+          timers.value = timers.value.filter((t) => t.uuid !== event.payload.uuid);
           return;
         }
       }
@@ -403,6 +426,52 @@ export const useTimerStore = defineStore(
         }
       }
     };
+    const updateTimer = (
+      uuid: string,
+      fields: { start: number; end: number; description: string; positive: boolean },
+    ) => {
+      const timer = timers.value.find((t) => t.uuid === uuid);
+      if (!timer) {
+        return;
+      }
+      const timestamp = Date.now();
+      timer.start = fields.start;
+      timer.end = fields.end;
+      timer.description = fields.description;
+      timer.positive = fields.positive;
+      timer.updatedAt = timestamp;
+      useSyncStore().enqueueEvent({
+        id: crypto.randomUUID(),
+        type: "timer_updated",
+        entityId: timer.uuid,
+        deviceId: useSyncStore().deviceId,
+        timestamp,
+        payload: {
+          uuid: timer.uuid,
+          start: fields.start,
+          end: fields.end,
+          description: fields.description,
+          positive: fields.positive,
+        },
+      });
+    };
+
+    const removeTimer = (uuid: string) => {
+      const timer = timers.value.find((t) => t.uuid === uuid);
+      if (!timer) {
+        return;
+      }
+      timers.value = timers.value.filter((t) => t.uuid !== uuid);
+      useSyncStore().enqueueEvent({
+        id: crypto.randomUUID(),
+        type: "timer_removed",
+        entityId: timer.uuid,
+        deviceId: useSyncStore().deviceId,
+        timestamp: Date.now(),
+        payload: { uuid: timer.uuid },
+      });
+    };
+
     const hasActiveDescendant = (id: string) => {
       return timers.value.some(
         (timer) =>
@@ -602,6 +671,8 @@ export const useTimerStore = defineStore(
       timers,
       modal,
       dayEnds,
+      reportDayStart,
+      reportDayEnd,
       isViewingToday,
       reportDayLabel,
       reportEntries,
@@ -624,6 +695,8 @@ export const useTimerStore = defineStore(
       stopTimer,
       isRunning,
       resumeTimer,
+      updateTimer,
+      removeTimer,
       getStatus,
       getTime,
     };

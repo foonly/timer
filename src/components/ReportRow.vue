@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useTimerStore } from "../timerStore";
 import StatusDot from "./StatusDot.vue";
 import TimeDisplay from "./TimeDisplay.vue";
+import TimerRecordsModal from "./TimerRecordsModal.vue";
 
 const store = useTimerStore();
 const props = defineProps<{ id: string; time: number; live: boolean }>();
@@ -12,7 +13,7 @@ const status = computed(() => store.getStatus(props.id));
 </script>
 
 <template>
-  <div class="report-row">
+  <div class="report-row clickable" @click="store.openModal('records', props.id)">
     <span class="name">
       <StatusDot v-if="live" :status="status" />
       <span class="crumb" v-for="(part, i) in nameParts" :key="part">
@@ -21,6 +22,7 @@ const status = computed(() => store.getStatus(props.id));
       </span>
     </span>
     <TimeDisplay class="row-time" :time="time" />
+    <TimerRecordsModal v-if="store.isModal('records', props.id)" :id="props.id" />
   </div>
 </template>
 

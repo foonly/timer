@@ -78,6 +78,22 @@ export function getTimeFromDays(days: number, offset = DAY_CUTOFF_HOUR) {
   return date.getTime();
 }
 
+// Converts an epoch-ms timestamp to the local `YYYY-MM-DDTHH:mm:ss` string a
+// <input type="datetime-local" step="1"> expects, and back. `fromDatetimeLocal`
+// relies on `new Date(string)` parsing that exact format as local time (not UTC).
+export function toDatetimeLocal(ms: number): string {
+  const date = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+}
+
+export function fromDatetimeLocal(value: string): number {
+  return new Date(value).getTime();
+}
+
 export function formatDayLabel(dayNumber: number, todayNumber: number, offset = DAY_CUTOFF_HOUR) {
   if (dayNumber === todayNumber) {
     return "Today";

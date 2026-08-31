@@ -35,6 +35,18 @@ const timerStoppedPayloadSchema = z.object({
   end: z.number(),
 });
 
+const timerUpdatedPayloadSchema = z.object({
+  uuid: z.string(),
+  start: z.number(),
+  end: z.number(),
+  description: z.string(),
+  positive: z.boolean(),
+});
+
+const timerRemovedPayloadSchema = z.object({
+  uuid: z.string(),
+});
+
 export const syncEventSchema = z.discriminatedUnion("type", [
   envelope.extend({
     type: z.literal("tag_added"),
@@ -60,6 +72,16 @@ export const syncEventSchema = z.discriminatedUnion("type", [
     type: z.literal("timer_stopped"),
     entityId: z.string(),
     payload: timerStoppedPayloadSchema,
+  }),
+  envelope.extend({
+    type: z.literal("timer_updated"),
+    entityId: z.string(),
+    payload: timerUpdatedPayloadSchema,
+  }),
+  envelope.extend({
+    type: z.literal("timer_removed"),
+    entityId: z.string(),
+    payload: timerRemovedPayloadSchema,
   }),
 ]);
 
