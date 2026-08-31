@@ -5,6 +5,7 @@ import { useTimerStore } from "./timerStore";
 import { pulledSyncEventSchema } from "./sync/events";
 
 const SYNC_INTERVAL_MS = 30_000;
+const PUSH_DEBOUNCE_MS = 2_000;
 const PUSH_CHUNK_SIZE = 200;
 const PULL_LIMIT = 500;
 
@@ -101,6 +102,7 @@ export function startSyncEngine() {
   started = true;
 
   const authStore = useAuthStore();
+  const syncStore = useSyncStore();
   const trigger = () => {
     void runCycle();
   };
@@ -116,4 +118,23 @@ export function startSyncEngine() {
       trigger();
     }
   });
+
+  // Near-real-time push: every local mutation (tag/timer add/update/remove) calls
+  // syncStore.enqueueEvent, growing pendingEvents by exactly one - so watching its length is a
+  // precise "a local edit just happened" signal, debounced so a burst of edits (e.g. typing in a
+  // description) only fires one sync cycle 2s after the last one. Watching pendingEvents.length
+  // rather than tags/timers directly also means this can never fire from a pulled remote event:
+  // applyRemoteEvent deliberately never touches pendingEvents (see timerStore.ts), so replaying
+  // another device's change can't cause an echo trigger here.
+  let debounceHandle = 0;
+  watch(
+    () => syncStore.pendingEvents.length,
+    (newLength, oldLength) => {
+      if (newLength <= oldLength) {
+        return;
+      }
+      window.clearTimeout(debounceHandle);
+      debounceHandle = window.setTimeout(trigger, PUSH_DEBOUNCE_MS);
+    },
+  );
 }
