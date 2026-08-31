@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.1 (2026-08-31)
+### 0.3.2 (2026-08-31)
+
+#### Continuous Integration
+
+- github: upgrade node version to 22 (aeeec26)
+
+### v0.3.1 (2026-08-31)
 
 #### Continuous Integration
 
