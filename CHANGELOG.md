@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.9 (2026-08-31)
+### 0.3.10 (2026-08-31)
+
+#### Continuous Integration
+
+- github: update rsync target directory to dist/ (3ba283b)
+
+### v0.3.9 (2026-08-31)
 
 #### Bug Fixes
 
