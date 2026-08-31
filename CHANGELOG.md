@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.4 (2026-08-31)
+### 0.3.5 (2026-08-31)
+
+#### Maintenance
+
+- deps: move pnpm configuration to package.json (c3d1873)
+
+### v0.3.4 (2026-08-31)
 
 #### Build System
 
