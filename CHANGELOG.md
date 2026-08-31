@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.3 (2026-08-31)
+### 0.3.4 (2026-08-31)
+
+#### Build System
+
+- npm: configure only-built-dependencies for security (2cd2712)
+
+### v0.3.3 (2026-08-31)
 
 #### Maintenance
 
