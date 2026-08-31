@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.3.0 (2026-08-31)
+### 0.3.1 (2026-08-31)
+
+#### Continuous Integration
+
+- github: update pnpm action version to 11 (b117544)
+
+## v0.3.0 (2026-08-31)
 
 #### Features
 
