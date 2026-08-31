@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.6 (2026-08-31)
+### 0.3.7 (2026-08-31)
+
+#### Maintenance
+
+- deps: remove pnpm onlyBuiltDependencies configuration (cde238b)
+
+### v0.3.6 (2026-08-31)
 
 #### Continuous Integration
 
