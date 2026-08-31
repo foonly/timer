@@ -61,11 +61,5 @@
       "prettier"
     ],
     "rules": {}
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "vue-demi"
-    ]
   }
 }
