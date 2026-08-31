@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.5 (2026-08-31)
+### 0.3.6 (2026-08-31)
+
+#### Continuous Integration
+
+- github: update node version to 26 in publish workflow (5a499e8)
+
+### v0.3.5 (2026-08-31)
 
 #### Maintenance
 
