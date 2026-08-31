@@ -37,10 +37,12 @@ jobs:
         with:
           key: ${{ secrets.SSH_KEY }}
           name: id_ed25519
-          known_hosts: ${{ secrets.CLOUDBERRY_HOSTS }}
+          known_hosts: ${{ vars.SSH_KNOWN_HOSTS }}
 
       - name: Deploy Dist
-        run: rsync -rlci --delete dist webmaster@cloudberry.uplink.fi:/var/www/timer/
+        run: >-
+          rsync -rlci --delete dist
+          ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.FRONTEND_DEPLOY_PATH }}
 
   build-backend:
     runs-on: ubuntu-latest
@@ -67,12 +69,12 @@ jobs:
         with:
           key: ${{ secrets.SSH_KEY }}
           name: id_ed25519
-          known_hosts: ${{ secrets.CLOUDBERRY_HOSTS }}
+          known_hosts: ${{ vars.SSH_KNOWN_HOSTS }}
 
       - name: Deploy binary and migrations
         run: |
-          rsync -rlci backend/migrations webmaster@cloudberry.uplink.fi:/opt/timer/backend/
-          rsync -lci backend/bin/timer-api webmaster@cloudberry.uplink.fi:/opt/timer/backend/bin/timer-api
+          rsync -rlci backend/migrations ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.BACKEND_DEPLOY_PATH }}
+          rsync -lci backend/bin/timer-api ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.BACKEND_DEPLOY_PATH }}bin/timer-api
 
       - name: Restart service
-        run: ssh webmaster@cloudberry.uplink.fi 'sudo systemctl restart timer-api'
+        run: ssh ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }} 'sudo systemctl restart ${{ vars.BACKEND_SERVICE_NAME }}'
