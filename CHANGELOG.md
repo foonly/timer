@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.7 (2026-08-31)
+### 0.3.8 (2026-08-31)
+
+#### Bug Fixes
+
+- deps: add pnpm-workspace.yaml for build script approvals (ee479c8)
+
+### v0.3.7 (2026-08-31)
 
 #### Maintenance
 
