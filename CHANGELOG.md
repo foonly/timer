@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.2 (2026-08-31)
+### 0.3.3 (2026-08-31)
+
+#### Maintenance
+
+- deps: remove pnpm dependency configuration (63a66bf)
+
+### v0.3.2 (2026-08-31)
 
 #### Continuous Integration
 
