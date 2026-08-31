@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.8 (2026-08-31)
+### 0.3.9 (2026-08-31)
+
+#### Bug Fixes
+
+- deps: approve esbuild build script in pnpm-workspace.yaml (ec041ff)
+
+### v0.3.8 (2026-08-31)
 
 #### Bug Fixes
 
