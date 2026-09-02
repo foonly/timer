@@ -336,8 +336,10 @@ export const useTimerStore = defineStore(
           if (timers.value.some((t) => t.uuid === event.payload.uuid)) {
             return;
           }
-          const path = findTagPathByUuid(event.payload.tagUuid);
-          if (!path) {
+          // null tagUuid means the root/global timer ("" path) - not a lookup failure.
+          const path =
+            event.payload.tagUuid === null ? "" : findTagPathByUuid(event.payload.tagUuid);
+          if (path === undefined) {
             console.warn(`Sync: unknown tag for timer ${event.payload.uuid} - skipping`);
             return;
           }
@@ -420,10 +422,11 @@ export const useTimerStore = defineStore(
       now.value = Date.now();
 
       const tagUuid = resolveTagUuid(id);
-      if (tagUuid === null) {
+      if (tagUuid === null && id !== "") {
         // Should be unreachable in practice - startTimer is always called with an existing tag's
-        // path - but if it ever isn't, drop the sync event rather than push a payload the backend
-        // can't resolve.
+        // path, except the id === "" root/global case (resolveTagUuid legitimately returns null
+        // there - see its own comment) - but if it ever isn't, drop the sync event rather than
+        // push a payload the backend can't resolve.
         console.warn(`Sync: could not resolve tag for timer "${id}" - skipping sync event`);
         return;
       }
@@ -761,6 +764,7 @@ export const useTimerStore = defineStore(
       startTimer,
       stopTimer,
       isRunning,
+      isPausedNow,
       resumeTimer,
       updateTimer,
       removeTimer,

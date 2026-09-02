@@ -78,6 +78,9 @@ func (e incomingEvent) validate() error {
 			return fmt.Errorf("invalid payload for %s: %w", e.Type, err)
 		}
 	case EventTimerStarted:
+		// TagUUID may legitimately be nil: a JSON null (or omitted key) unmarshals to the zero
+		// value the same as a bad payload would, but here it means "no specific tag - this is the
+		// root/global timer that 'pause everything' starts", not an invalid event.
 		var p struct {
 			UUID    uuid.UUID `json:"uuid"`
 			TagUUID uuid.UUID `json:"tagUuid"`
@@ -85,8 +88,8 @@ func (e incomingEvent) validate() error {
 		if err := json.Unmarshal(e.Payload, &p); err != nil {
 			return fmt.Errorf("invalid payload for %s: %w", e.Type, err)
 		}
-		if p.UUID == uuid.Nil || p.TagUUID == uuid.Nil {
-			return fmt.Errorf("payload.uuid and payload.tagUuid are required for %s", e.Type)
+		if p.UUID == uuid.Nil {
+			return fmt.Errorf("payload.uuid is required for %s", e.Type)
 		}
 	case EventTimerStopped, EventTimerUpdated, EventTimerRemoved:
 		if err := requireUUIDField(e.Payload, "uuid"); err != nil {

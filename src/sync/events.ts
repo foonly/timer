@@ -26,7 +26,9 @@ const tagRemovedPayloadSchema = z.object({
 
 const timerStartedPayloadSchema = z.object({
   uuid: z.string(),
-  tagUuid: z.string(),
+  // null means this timer isn't attached to any specific tag - it's the root/global timer (see
+  // `resolveTagUuid("")` in timerStore.ts), which "pause everything" starts.
+  tagUuid: z.string().nullable(),
   positive: z.boolean(),
   start: z.number(),
 });

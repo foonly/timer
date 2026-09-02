@@ -6,6 +6,8 @@ import SettingsPage from "./components/SettingsPage.vue";
 import SyncStatus from "./components/SyncStatus.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
+import Pause from "./assets/pause.svg";
+import Resume from "./assets/resume.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import AddTagRow from "./components/AddTagRow.vue";
 import IconButton from "./components/IconButton.vue";
@@ -37,6 +39,12 @@ const store = useTimerStore();
     </div>
     <main id="main-grid">
       <section id="tags-section">
+        <div class="root-controls">
+          <button v-if="!store.isPausedNow('')" @click="store.startTimer('', false)">
+            <Pause class="icon" /> Pause all
+          </button>
+          <button v-else @click="store.resumeTimer('')"><Resume class="icon" /> Resume all</button>
+        </div>
         <ListTags parent="" />
         <AddTagRow parent="" />
       </section>
@@ -59,5 +67,19 @@ aside.icons {
 }
 .status-legend {
   justify-content: center;
+}
+.root-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+.root-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.root-controls .icon {
+  width: 18px;
+  height: 18px;
 }
 </style>
