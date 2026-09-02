@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.4.0 (2026-09-02)
+## 0.5.0 (2026-09-02)
+
+#### Features
+
+- sync: add global pause/resume timer functionality (0e2fc6d)
+
+## v0.4.0 (2026-09-02)
 
 #### Features
 
