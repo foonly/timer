@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.3.10 (2026-08-31)
+## 0.4.0 (2026-09-02)
+
+#### Features
+
+- tags: implement drag-and-drop reordering (feb51d2)
+
+### v0.3.10 (2026-08-31)
 
 #### Continuous Integration
 
