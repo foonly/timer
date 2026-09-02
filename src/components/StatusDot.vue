@@ -9,5 +9,5 @@ const label = computed(() => statusLabels[props.status]);
 </script>
 
 <template>
-  <span class="status-dot" :class="status" :title="label"></span>
+  <span class="status-dot" :class="status" :title="label" aria-hidden="true"></span>
 </template>

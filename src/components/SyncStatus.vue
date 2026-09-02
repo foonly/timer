@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useAuthStore } from "../authStore";
 import { useSyncStore } from "../syncStore";
 import { useTimerStore } from "../timerStore";
+import IconButton from "./IconButton.vue";
 
 const authStore = useAuthStore();
 const syncStore = useSyncStore();
@@ -47,12 +48,9 @@ const label = computed(() => {
 </script>
 
 <template>
-  <span
-    class="sync-status clickable"
-    :class="state"
-    :title="label"
-    @click="timerStore.openModal('settings')"
-  ></span>
+  <IconButton :label="label" @click="timerStore.openModal('settings')">
+    <span class="sync-status" :class="state"></span>
+  </IconButton>
 </template>
 
 <style scoped>
@@ -75,7 +73,7 @@ const label = computed(() => {
     background-color: var(--fht-status-paused);
   }
   &.error {
-    background-color: rgb(220, 80, 80);
+    background-color: var(--fht-error-color);
   }
 }
 </style>

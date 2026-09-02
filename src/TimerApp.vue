@@ -8,6 +8,7 @@ import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
 import { toggleDarkLightMode } from "./darkLight";
 import AddTagRow from "./components/AddTagRow.vue";
+import IconButton from "./components/IconButton.vue";
 import type { timerStatus } from "./types";
 import { statusLabels } from "./helpers";
 import { useTimerStore } from "./timerStore";
@@ -20,8 +21,12 @@ const store = useTimerStore();
   <div class="app-root">
     <aside class="icons">
       <SyncStatus />
-      <DarkLight class="icon clickable" @click="toggleDarkLightMode" />
-      <Settings class="icon clickable" @click="store.openModal('settings')" />
+      <IconButton label="Toggle dark/light mode" @click="toggleDarkLightMode">
+        <DarkLight class="icon" />
+      </IconButton>
+      <IconButton label="Settings" @click="store.openModal('settings')">
+        <Settings class="icon" />
+      </IconButton>
     </aside>
     <SettingsPage v-if="store.isModal('settings')" />
     <h1>Foonlys Hierarchical Timer</h1>
@@ -50,7 +55,6 @@ aside.icons {
   position: absolute;
   right: 1rem;
   top: 1rem;
-  opacity: 0.5;
   align-items: center;
 }
 .status-legend {

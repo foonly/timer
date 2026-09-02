@@ -54,6 +54,27 @@
   --fht-status-sub-running: rgb(80, 160, 230);
   --fht-status-idle: rgba(140, 140, 140, 0.35);
 
+  --fht-space-1: 0.25rem;
+  --fht-space-2: 0.5rem;
+  --fht-space-3: 0.75rem;
+  --fht-space-4: 1rem;
+  --fht-space-5: 1.5rem;
+  --fht-space-6: 2rem;
+
+  --fht-error-color: rgb(224, 90, 90);
+
+  --fht-focus-ring-color: var(--fht-status-sub-running);
+  --fht-focus-ring-width: 2px;
+  --fht-focus-ring-offset: 2px;
+
+  --fht-button-primary-bg: var(--fht-text-color);
+  --fht-button-primary-text: var(--fht-background-color);
+  --fht-button-secondary-border: var(--fht-element-border-color);
+  --fht-button-destructive-bg: var(--fht-error-color);
+  --fht-button-destructive-text: rgb(250, 250, 250);
+
+  --fht-touch-target: 44px;
+
   background-color: var(--fht-background-color);
   color: var(--fht-text-color);
   font-family: var(--fht-font-family);
@@ -72,7 +93,13 @@ html {
     --fht-text-color: rgb(20, 20, 20);
     --fht-element-background-color: rgba(180, 180, 180);
     --fht-element-border-color: rgba(120, 120, 120);
+    --fht-error-color: rgb(190, 40, 40);
   }
+}
+
+:focus-visible {
+  outline: var(--fht-focus-ring-width) solid var(--fht-focus-ring-color);
+  outline-offset: var(--fht-focus-ring-offset);
 }
 
 #main-grid {
@@ -85,6 +112,10 @@ html {
   gap: 1rem;
   max-width: 1200px;
   margin: auto;
+
+  @media screen and (max-width: 480px) {
+    gap: var(--fht-space-3);
+  }
 
   @media screen and (min-width: 1100px) {
     grid-template-columns: 1fr 1fr;
@@ -104,6 +135,7 @@ time {
 
 input,
 textarea,
+select,
 button {
   color: inherit;
   font-family: unset;
@@ -116,13 +148,67 @@ button {
   padding: 0.5rem 1rem;
   font-weight: bold;
   border-radius: var(--fht-button-border-radius);
+  background-color: transparent;
+  border: 1px solid var(--fht-button-secondary-border);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+}
+
+.btn-primary {
+  background-color: var(--fht-button-primary-bg);
+  color: var(--fht-button-primary-text);
+  border-color: transparent;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid var(--fht-button-secondary-border);
+}
+
+.btn-destructive {
+  background-color: var(--fht-button-destructive-bg);
+  color: var(--fht-button-destructive-text);
+  border-color: transparent;
+}
+
+.form-stack {
+  padding: 1rem;
+
+  & > * {
+    width: 100%;
+    margin: 0.25rem auto;
+    display: block;
+  }
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fht-space-3);
+  margin-top: var(--fht-space-4);
+  flex-wrap: wrap;
+
+  @media screen and (max-width: 480px) {
+    flex-direction: column-reverse;
+
+    & button {
+      width: 100%;
+    }
+  }
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: clamp(1.25rem, 1rem + 1vw, 1.6rem);
 }
 h2 {
-  font-size: 1.4rem;
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.4rem);
 }
 
 .icons {
@@ -134,16 +220,6 @@ h2 {
   width: 24px;
   height: 24px;
   fill: currentColor;
-}
-
-.clickable {
-  cursor: pointer;
-  user-select: none;
-  opacity: 0.5;
-
-  &:hover {
-    opacity: 1;
-  }
 }
 
 .card {
@@ -197,6 +273,10 @@ h2 {
     transform: scale(1.4);
     opacity: 0.6;
   }
+}
+
+.sortable-ghost {
+  opacity: 0.35;
 }
 
 .status-legend {

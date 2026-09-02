@@ -8,6 +8,10 @@ export const tagSchema = z.object({
   parent: z.string().default(""),
   description: z.string(),
   updatedAt: z.number().default(() => Date.now()),
+  // Sort key among siblings (same `parent`), ascending. Kept sparse (large gaps between values)
+  // so a drag-reorder only ever has to rewrite the moved tag's own order, never its siblings' -
+  // see `moveTag`/`ORDER_GAP` in timerStore.ts.
+  order: z.number().default(0),
 });
 export type fhtTag = z.infer<typeof tagSchema>;
 

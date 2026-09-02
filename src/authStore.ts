@@ -42,6 +42,7 @@ function bootstrapSyncIfNeeded() {
         parentUuid: tag.parent === "" ? null : (uuidForPath(tag.parent) ?? null),
         name: tag.name,
         description: tag.description,
+        order: tag.order,
       },
     });
   }

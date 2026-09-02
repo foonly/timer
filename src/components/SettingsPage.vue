@@ -38,20 +38,26 @@ const submit = async () => {
         <p>Signed in as {{ authStore.email }}</p>
         <p class="sync-info">Last synced: {{ lastSynced() }}</p>
         <div class="modal-buttons">
-          <button type="button" @click="authStore.logout">Log out</button>
+          <button type="button" class="btn-secondary" @click="authStore.logout">Log out</button>
         </div>
       </template>
       <template v-else>
         <form @submit.prevent="submit">
-          <div class="add-form">
-            <input type="email" v-model="email" placeholder="Email" required />
-            <input type="password" v-model="password" placeholder="Password" required />
+          <div class="form-stack">
+            <label>
+              Email
+              <input type="email" v-model="email" placeholder="Email" required />
+            </label>
+            <label>
+              Password
+              <input type="password" v-model="password" placeholder="Password" required />
+            </label>
           </div>
           <p class="auth-error" v-if="authStore.authStatus === 'error'">
             {{ authStore.authError }}
           </p>
           <div class="modal-buttons">
-            <button type="submit" :disabled="submitting">
+            <button type="submit" class="btn-primary" :disabled="submitting">
               {{ mode === "login" ? "Log in" : "Sign up" }}
             </button>
           </div>
@@ -87,18 +93,23 @@ const submit = async () => {
   font-size: 0.9em;
 }
 .auth-error {
-  color: rgb(220, 80, 80);
+  color: var(--fht-error-color);
   font-size: 0.9em;
 }
 .mode-toggle {
   font-size: 0.9em;
   opacity: 0.8;
 }
-.add-form {
-  & > * {
-    width: 100%;
-    margin: 0.25rem auto;
-    display: block;
+.form-stack {
+  padding: 0;
+
+  & label {
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
+
+  & input {
+    margin-top: 0.2rem;
   }
 }
 </style>

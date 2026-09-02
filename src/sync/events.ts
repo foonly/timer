@@ -17,6 +17,7 @@ const tagPayloadSchema = z.object({
   parentUuid: z.string().nullable(),
   name: z.string(),
   description: z.string(),
+  order: z.number(),
 });
 
 const tagRemovedPayloadSchema = z.object({

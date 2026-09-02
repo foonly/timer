@@ -3,6 +3,7 @@ import { useTimerStore } from "../timerStore";
 import Chevron from "../assets/chevron-up.svg";
 import TimeDisplay from "./TimeDisplay.vue";
 import ReportRow from "./ReportRow.vue";
+import IconButton from "./IconButton.vue";
 
 const store = useTimerStore();
 </script>
@@ -10,25 +11,15 @@ const store = useTimerStore();
 <template>
   <section id="timer-section">
     <div class="report-nav">
-      <Chevron
-        class="icon clickable nav-prev"
-        title="Previous day"
-        @click="store.goToPreviousDay()"
-      />
-      <button
-        class="day-label"
-        :class="{ clickable: !store.isViewingToday }"
-        :disabled="store.isViewingToday"
-        @click="store.goToToday()"
-      >
+      <IconButton label="Previous day" @click="store.goToPreviousDay()">
+        <Chevron class="icon nav-prev" />
+      </IconButton>
+      <button class="day-label" :disabled="store.isViewingToday" @click="store.goToToday()">
         {{ store.reportDayLabel }}
       </button>
-      <Chevron
-        class="icon nav-next"
-        :class="{ clickable: !store.isViewingToday, disabled: store.isViewingToday }"
-        title="Next day"
-        @click="store.goToNextDay()"
-      />
+      <IconButton label="Next day" :disabled="store.isViewingToday" @click="store.goToNextDay()">
+        <Chevron class="icon nav-next" />
+      </IconButton>
     </div>
     <div class="report-total">
       <span>Time active</span>
@@ -64,18 +55,22 @@ const store = useTimerStore();
 .nav-next {
   transform: rotate(90deg);
 }
-.disabled {
-  opacity: 0.15;
-  cursor: default;
-}
 .day-label {
   background: none;
+  border: none;
   font-size: 1.1rem;
   font-weight: bold;
   min-width: 9rem;
   text-align: center;
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+  }
 
   &:disabled {
+    opacity: 1;
     cursor: default;
   }
 }

@@ -2,6 +2,7 @@
 import { useTimerStore } from "../timerStore";
 import Plus from "../assets/plus.svg";
 import QuickStartButton from "./QuickStartButton.vue";
+import IconButton from "./IconButton.vue";
 
 const store = useTimerStore();
 const props = defineProps<{ parent: string }>();
@@ -9,11 +10,9 @@ const props = defineProps<{ parent: string }>();
 
 <template>
   <div class="add-row icons" :class="{ root: !props.parent }">
-    <Plus
-      class="icon clickable"
-      title="Add tag"
-      @click="store.openModal('add-tag', props.parent)"
-    />
+    <IconButton label="Add tag" @click="store.openModal('add-tag', props.parent)">
+      <Plus class="icon" />
+    </IconButton>
     <QuickStartButton :parent="props.parent" />
   </div>
 </template>

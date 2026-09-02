@@ -12,6 +12,8 @@ import ModalDialog from "./ModalDialog.vue";
 import StartEnd from "./StartEnd.vue";
 import Edit from "../assets/edit.svg";
 import Trash from "../assets/trash.svg";
+import IconButton from "./IconButton.vue";
+import TagPath from "./TagPath.vue";
 import type { fhtTimer } from "../types";
 
 const store = useTimerStore();
@@ -30,8 +32,6 @@ const records = computed(() =>
     )
     .sort((a, b) => a.start - b.start),
 );
-
-const crumbParts = (id: string) => id.split("//").filter((part) => part);
 
 const editingUuid = ref<string | null>(null);
 const deletingUuid = ref<string | null>(null);
@@ -101,7 +101,7 @@ const confirmDelete = () => {
 
 <template>
   <ModalDialog :title="modalTitle">
-    <form v-if="editingTimer" class="add-form" @submit.prevent="submitEdit">
+    <form v-if="editingTimer" class="form-stack" @submit.prevent="submitEdit">
       <label>
         Start
         <input type="datetime-local" step="1" v-model="startInput" required />
@@ -117,16 +117,16 @@ const confirmDelete = () => {
       </label>
       <p class="error" v-if="editError">{{ editError }}</p>
       <div class="modal-buttons">
-        <button type="button" @click="cancelEdit">Cancel</button>
-        <button type="submit" :disabled="!!editError">Save</button>
+        <button type="button" class="btn-secondary" @click="cancelEdit">Cancel</button>
+        <button type="submit" class="btn-primary" :disabled="!!editError">Save</button>
       </div>
     </form>
 
     <template v-else-if="deletingUuid">
       <p>Delete this timer record? This can't be undone.</p>
       <div class="modal-buttons">
-        <button @click="deletingUuid = null">Cancel</button>
-        <button @click="confirmDelete">Delete</button>
+        <button class="btn-secondary" @click="deletingUuid = null">Cancel</button>
+        <button class="btn-destructive" @click="confirmDelete">Delete</button>
       </div>
     </template>
 
@@ -140,9 +140,7 @@ const confirmDelete = () => {
         >
           <div class="record-info">
             <span class="crumb" v-if="record.id !== props.id">
-              <span class="crumb-part" v-for="(part, i) in crumbParts(record.id)" :key="part">
-                <span class="separator" v-if="i > 0">›</span>{{ part }}
-              </span>
+              <TagPath :id="record.id" />
             </span>
             <span class="tag pause-tag" v-if="!record.positive">Pause</span>
             <StartEnd :start="record.start" :end="record.end" />
@@ -150,14 +148,18 @@ const confirmDelete = () => {
             <p class="description" v-if="record.description">{{ record.description }}</p>
           </div>
           <div class="record-actions icons" v-if="record.id === props.id">
-            <Edit class="icon clickable" title="Edit" @click="startEdit(record)" />
-            <Trash class="icon clickable" title="Delete" @click="deletingUuid = record.uuid" />
+            <IconButton label="Edit" @click="startEdit(record)">
+              <Edit class="icon" />
+            </IconButton>
+            <IconButton label="Delete" @click="deletingUuid = record.uuid">
+              <Trash class="icon" />
+            </IconButton>
           </div>
         </div>
       </div>
       <p class="empty" v-else>No timer records for this day.</p>
       <div class="modal-buttons">
-        <button @click="store.closeModal()">Close</button>
+        <button class="btn-secondary" @click="store.closeModal()">Close</button>
       </div>
     </template>
   </ModalDialog>
@@ -198,10 +200,6 @@ const confirmDelete = () => {
   font-size: 0.85rem;
   opacity: 0.8;
 }
-.separator {
-  opacity: 0.5;
-  margin: 0 0.2ch;
-}
 .tag {
   display: inline-block;
   font-size: 0.75rem;
@@ -222,15 +220,7 @@ const confirmDelete = () => {
   text-align: center;
   padding: 1rem;
 }
-.add-form {
-  padding: 1rem;
-
-  & > * {
-    width: 100%;
-    margin: 0.25rem auto;
-    display: block;
-  }
-
+.form-stack {
   & label {
     font-size: 0.85rem;
     opacity: 0.8;
@@ -246,7 +236,7 @@ const confirmDelete = () => {
   font-size: 0.9rem;
 }
 .error {
-  color: #e05252;
+  color: var(--fht-error-color);
   font-size: 0.85rem;
 }
 </style>

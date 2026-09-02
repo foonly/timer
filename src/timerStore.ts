@@ -42,9 +42,21 @@ export const useTimerStore = defineStore(
 
     // Actions
     const getTags = (parentTag: string): fhtTag[] => {
-      return tags.value.filter((tag) => {
-        return tag.parent === parentTag;
-      });
+      return tags.value
+        .filter((tag) => {
+          return tag.parent === parentTag;
+        })
+        .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+    };
+
+    // Sparse gaps between sibling `order` values so a single drag-reorder only ever has to
+    // rewrite the moved tag's own order (as a midpoint of its new neighbors), never renumber
+    // every sibling - see `moveTag`.
+    const ORDER_GAP = 1000;
+
+    const nextOrderAfter = (parent: string): number => {
+      const siblings = getTags(parent);
+      return siblings.length ? siblings[siblings.length - 1].order + ORDER_GAP : 0;
     };
 
     const pathOf = (tag: { parent: string; name: string }) => `${tag.parent}//${tag.name}`;
@@ -72,12 +84,13 @@ export const useTimerStore = defineStore(
       name: string,
       description: string,
       updatedAt: number,
+      order: number,
     ) => {
       const existing = tags.value.find((t) => t.uuid === uuid);
       if (existing) {
         return existing;
       }
-      const tag = tagSchema.parse({ uuid, parent, name, description, updatedAt });
+      const tag = tagSchema.parse({ uuid, parent, name, description, updatedAt, order });
       tags.value.push(tag);
       return tag;
     };
@@ -89,7 +102,7 @@ export const useTimerStore = defineStore(
     // isSelfOrDescendant rather than just direct children.
     const renameTagInPlace = (
       tag: fhtTag,
-      fields: { name: string; parent: string; description: string },
+      fields: { name: string; parent: string; description: string; order: number },
       timestamp: number,
     ) => {
       const id = pathOf(tag);
@@ -98,6 +111,9 @@ export const useTimerStore = defineStore(
       tag.description = fields.description;
       tag.parent = fields.parent;
       tag.updatedAt = timestamp;
+      // Set unconditionally, before the early return below - a pure same-parent reorder never
+      // changes `id` at all, so the order write must not be skipped in that case.
+      tag.order = fields.order;
 
       if (newId === id) {
         return;
@@ -135,21 +151,22 @@ export const useTimerStore = defineStore(
     const addTag = (parent: string, name: string, description = "") => {
       const uuid = crypto.randomUUID();
       const updatedAt = Date.now();
-      const tag = insertTag(uuid, parent, name, description, updatedAt);
+      const order = nextOrderAfter(parent);
+      const tag = insertTag(uuid, parent, name, description, updatedAt, order);
       useSyncStore().enqueueEvent({
         id: crypto.randomUUID(),
         type: "tag_added",
         entityId: uuid,
         deviceId: useSyncStore().deviceId,
         timestamp: updatedAt,
-        payload: { uuid, parentUuid: resolveTagUuid(parent), name, description },
+        payload: { uuid, parentUuid: resolveTagUuid(parent), name, description, order },
       });
       return tag;
     };
 
     const updateTag = (
       id: string,
-      fields: { name: string; parent: string; description: string },
+      fields: { name: string; parent: string; description: string; order: number },
     ) => {
       const tag = tags.value.find((t) => pathOf(t) === id);
       if (!tag) {
@@ -168,8 +185,40 @@ export const useTimerStore = defineStore(
           parentUuid: resolveTagUuid(fields.parent),
           name: fields.name,
           description: fields.description,
+          order: fields.order,
         },
       });
+    };
+
+    // Drag-and-drop entry point: reorders `id` among the siblings of `newParent`, landing at
+    // `newIndex` (an index into that parent's sibling list with `id` itself excluded) - and, when
+    // `newParent` differs from the tag's current parent, reparents it there too. Reparenting reuses
+    // updateTag/renameTagInPlace's existing cascade, which already rewrites every descendant tag's
+    // `parent` and every affected timer's `id`, so a moved tag's history moves with it intact.
+    const moveTag = (id: string, newParent: string, newIndex: number) => {
+      const tag = tags.value.find((t) => pathOf(t) === id);
+      if (!tag) {
+        return;
+      }
+      // Refuse to drop a tag into itself or one of its own descendants - would otherwise create a
+      // cycle that getTags/isSelfOrDescendant (and the whole recursive tree render) can't handle.
+      if (newParent === id || isSelfOrDescendant(newParent, id)) {
+        return;
+      }
+      const siblings = getTags(newParent).filter((t) => t.uuid !== tag.uuid);
+      const before = siblings[newIndex - 1];
+      const after = siblings[newIndex];
+      let order: number;
+      if (!before && !after) {
+        order = 0;
+      } else if (!before) {
+        order = after.order - ORDER_GAP;
+      } else if (!after) {
+        order = before.order + ORDER_GAP;
+      } else {
+        order = (before.order + after.order) / 2;
+      }
+      updateTag(id, { name: tag.name, parent: newParent, description: tag.description, order });
     };
 
     const removeTag = (remove: string) => {
@@ -189,17 +238,26 @@ export const useTimerStore = defineStore(
       }
     };
 
-    // Backfills `uuid`/`updatedAt` on any tag/timer that predates the sync feature - persisted
-    // state is written straight into these refs on load, bypassing tagSchema/timerSchema's zod
-    // defaults, so this has to run explicitly once at startup (see main.ts) before anything else
-    // touches tags/timers.
+    // Backfills `uuid`/`updatedAt`/`order` on any tag/timer that predates the sync/ordering
+    // features - persisted state is written straight into these refs on load, bypassing
+    // tagSchema/timerSchema's zod defaults, so this has to run explicitly once at startup (see
+    // main.ts) before anything else touches tags/timers.
     const migrateUuids = () => {
+      // Assigns sequential, gapped order values per parent group, walking tags.value in its
+      // existing (historical insertion) order - so upgrading doesn't visibly reshuffle anyone's
+      // current tag order.
+      const nextOrderByParent = new Map<string, number>();
       for (const tag of tags.value) {
         if (!tag.uuid) {
           tag.uuid = crypto.randomUUID();
         }
         if (!tag.updatedAt) {
           tag.updatedAt = Date.now();
+        }
+        if (tag.order === undefined) {
+          const order = nextOrderByParent.get(tag.parent) ?? 0;
+          tag.order = order;
+          nextOrderByParent.set(tag.parent, order + ORDER_GAP);
         }
       }
       for (const timer of timers.value) {
@@ -230,6 +288,7 @@ export const useTimerStore = defineStore(
             event.payload.name,
             event.payload.description,
             event.timestamp,
+            event.payload.order,
           );
           return;
         }
@@ -247,6 +306,7 @@ export const useTimerStore = defineStore(
               event.payload.name,
               event.payload.description,
               event.timestamp,
+              event.payload.order,
             );
             return;
           }
@@ -255,7 +315,12 @@ export const useTimerStore = defineStore(
           }
           renameTagInPlace(
             tag,
-            { name: event.payload.name, parent, description: event.payload.description },
+            {
+              name: event.payload.name,
+              parent,
+              description: event.payload.description,
+              order: event.payload.order,
+            },
             event.timestamp,
           );
           return;
@@ -684,6 +749,8 @@ export const useTimerStore = defineStore(
       getTags,
       addTag,
       updateTag,
+      moveTag,
+      nextOrderAfter,
       removeTag,
       migrateUuids,
       applyRemoteEvent,

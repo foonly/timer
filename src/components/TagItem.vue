@@ -2,6 +2,8 @@
 import type { fhtTag } from "../types";
 import Trash from "../assets/trash.svg";
 import Edit from "../assets/edit.svg";
+import Plus from "../assets/plus.svg";
+import Grip from "../assets/grip.svg";
 import Play from "../assets/play.svg";
 import Resume from "../assets/resume.svg";
 import Stop from "../assets/stop.svg";
@@ -11,6 +13,8 @@ import ModalDialog from "./ModalDialog.vue";
 import TimeDisplay from "./TimeDisplay.vue";
 import EditTag from "./EditTag.vue";
 import StatusDot from "./StatusDot.vue";
+import IconButton from "./IconButton.vue";
+import QuickStartButton from "./QuickStartButton.vue";
 import { computed } from "vue";
 
 const store = useTimerStore();
@@ -22,44 +26,60 @@ const status = computed(() => store.getStatus(id));
 </script>
 
 <template>
-  <div class="tag card" :data-status="status">
+  <div class="tag card" :data-status="status" :data-tag-id="id">
     <header>
-      <h2><StatusDot :status="status" />{{ tag.name }}</h2>
+      <h2>
+        <Grip class="icon drag-handle" aria-hidden="true" />
+        <StatusDot :status="status" />{{ tag.name }}
+      </h2>
       <section class="actions icons">
-        <Trash
-          class="icon clickable"
+        <IconButton
+          label="Remove tag"
+          size="small"
           @click="store.openModal('remove-tag', tag.parent, tag.name)"
-        />
-        <Edit class="icon clickable" @click="store.openModal('edit-tag', tag.parent, tag.name)" />
+        >
+          <Trash class="icon" />
+        </IconButton>
+        <IconButton
+          label="Edit tag"
+          size="small"
+          @click="store.openModal('edit-tag', tag.parent, tag.name)"
+        >
+          <Edit class="icon" />
+        </IconButton>
+        <IconButton label="Add tag" size="small" @click="store.openModal('add-tag', id)">
+          <Plus class="icon" />
+        </IconButton>
+        <QuickStartButton :parent="id" size="small" />
       </section>
     </header>
     <p>{{ tag.description }}</p>
     <div class="time-row">
       <section class="controls icons">
-        <Play
-          class="icon clickable"
-          title="Start"
+        <IconButton
+          label="Start"
           @click="store.startTimer(id)"
           v-if="!store.isRunning(id) && status !== 'paused'"
-        />
-        <Stop
-          v-if="store.isRunning(id)"
-          class="icon clickable"
-          title="Stop"
-          @click="store.stopTimer(id)"
-        />
-        <Resume
+        >
+          <Play class="icon" />
+        </IconButton>
+        <IconButton v-if="store.isRunning(id)" label="Stop" @click="store.stopTimer(id)">
+          <Stop class="icon" />
+        </IconButton>
+        <IconButton
           v-if="status === 'paused' && store.isRunning(id, false)"
-          class="icon clickable"
-          title="Resume"
+          label="Resume"
           @click="store.resumeTimer(id)"
-        />
-        <Pause
+        >
+          <Resume class="icon" />
+        </IconButton>
+        <IconButton
           v-else-if="status === 'running' || status === 'sub-running'"
-          class="icon clickable"
-          title="Pause"
+          label="Pause"
           @click="store.startTimer(id, false)"
-        />
+        >
+          <Pause class="icon" />
+        </IconButton>
       </section>
       <TimeDisplay class="tag-time" :time="store.getTime(id)" />
     </div>
@@ -68,8 +88,10 @@ const status = computed(() => store.getStatus(id));
     <ModalDialog v-if="store.isModal('remove-tag', tag.parent, tag.name)" title="Are you sure?">
       <p>Remove tag "{{ tag.name }}" and all it's sub-tags?</p>
       <div class="modal-buttons">
-        <button @click="store.modal = ''">Cancel</button>
-        <button @click="store.removeTag(`${tag.parent}//${tag.name}`)">Remove</button>
+        <button class="btn-secondary" @click="store.modal = ''">Cancel</button>
+        <button class="btn-destructive" @click="store.removeTag(`${tag.parent}//${tag.name}`)">
+          Remove
+        </button>
       </div>
     </ModalDialog>
     <EditTag
@@ -82,6 +104,9 @@ const status = computed(() => store.getStatus(id));
 </template>
 
 <style scoped>
+.card {
+  padding: 0.6rem 0.85rem 0.8rem;
+}
 header {
   display: flex;
   align-items: flex-start;
@@ -94,19 +119,49 @@ h2 {
   gap: 0.5rem;
   min-width: 0;
   flex: 1;
+  font-size: 1.05rem;
 
   & .status-dot {
     margin-top: 0.45em;
   }
+
+  & .drag-handle {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 0.5em;
+    opacity: 0.4;
+    cursor: grab;
+    touch-action: none;
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
 }
 .actions {
   flex: none;
+  gap: 0.4rem;
+
+  & .icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+p {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
 }
 .time-row {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 0.75rem;
+  margin-top: 0.4rem;
 
   & .icon {
     width: 32px;
@@ -114,7 +169,7 @@ h2 {
   }
 }
 .tag-time {
-  font-size: 2.2rem;
+  font-size: 1.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
