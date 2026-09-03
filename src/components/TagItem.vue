@@ -114,12 +114,6 @@ header {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-
-  @media screen and (max-width: 480px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.35rem;
-  }
 }
 h2 {
   display: flex;
