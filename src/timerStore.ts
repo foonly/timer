@@ -22,6 +22,9 @@ export const useTimerStore = defineStore(
     const tags = ref(<fhtTag[]>[]);
     const timers = ref(<fhtTimer[]>[]);
     const modal = ref("");
+    // Which tags are shown collapsed, by tag id. Local-only UI state - deliberately never wired
+    // into a sync event, so it stays device-specific instead of following the tag across devices.
+    const collapsedTagIds = ref(<string[]>[]);
     // null means "today" and tracks the real day as it advances; a number pins the report to
     // that specific day so browsing history doesn't get yanked forward by a real day rollover.
     const viewedDayNumber = ref<number | null>(null);
@@ -405,6 +408,14 @@ export const useTimerStore = defineStore(
       addTag(parent, name);
       startTimer(`${parent}//${name}`);
     };
+    const isCollapsed = (id: string) => collapsedTagIds.value.includes(id);
+    const toggleCollapsed = (id: string) => {
+      if (!collapsedTagIds.value.includes(id)) {
+        collapsedTagIds.value.push(id);
+      } else {
+        collapsedTagIds.value = collapsedTagIds.value.filter((c) => c !== id);
+      }
+    };
     const openModal = (id: string, ...name: string[]) => {
       modal.value = modalName(id, ...name);
     };
@@ -761,6 +772,8 @@ export const useTimerStore = defineStore(
       openModal,
       closeModal,
       isModal,
+      isCollapsed,
+      toggleCollapsed,
       startTimer,
       stopTimer,
       isRunning,
@@ -774,7 +787,7 @@ export const useTimerStore = defineStore(
   },
   {
     persist: {
-      paths: ["tags", "timers"],
+      paths: ["tags", "timers", "collapsedTagIds"],
     },
   },
 );
