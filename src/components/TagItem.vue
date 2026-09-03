@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import type { fhtTag } from "../types";
-import Trash from "../assets/trash.svg";
-import Edit from "../assets/edit.svg";
-import Plus from "../assets/plus.svg";
 import Grip from "../assets/grip.svg";
 import ChevronDown from "../assets/chevron-down.svg";
 import Play from "../assets/play.svg";
@@ -15,7 +12,7 @@ import TimeDisplay from "./TimeDisplay.vue";
 import EditTag from "./EditTag.vue";
 import StatusDot from "./StatusDot.vue";
 import IconButton from "./IconButton.vue";
-import QuickStartButton from "./QuickStartButton.vue";
+import TagActionsMenu from "./TagActionsMenu.vue";
 import { computed } from "vue";
 
 const store = useTimerStore();
@@ -54,26 +51,7 @@ const childSummary = computed(() => {
         <span class="tag-name">{{ tag.name }}</span>
         <span v-if="collapsed && childSummary" class="child-summary">{{ childSummary }}</span>
       </h2>
-      <section class="actions icons" v-if="!collapsed">
-        <IconButton
-          label="Remove tag"
-          size="small"
-          @click="store.openModal('remove-tag', tag.parent, tag.name)"
-        >
-          <Trash class="icon" />
-        </IconButton>
-        <IconButton
-          label="Edit tag"
-          size="small"
-          @click="store.openModal('edit-tag', tag.parent, tag.name)"
-        >
-          <Edit class="icon" />
-        </IconButton>
-        <IconButton label="Add tag" size="small" @click="store.openModal('add-tag', id)">
-          <Plus class="icon" />
-        </IconButton>
-        <QuickStartButton :parent="id" size="small" />
-      </section>
+      <TagActionsMenu v-if="!collapsed" :tag="tag" :id="id" />
     </header>
     <template v-if="!collapsed">
       <p>{{ tag.description }}</p>
@@ -210,19 +188,6 @@ h2 {
     &.collapsed .icon {
       transform: rotate(-90deg);
     }
-  }
-}
-.actions {
-  flex: none;
-  gap: 0.4rem;
-
-  & .icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  @media screen and (max-width: 480px) {
-    justify-content: flex-end;
   }
 }
 p {
