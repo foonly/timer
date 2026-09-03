@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.6.0 (2026-09-03)
+### 0.6.1 (2026-09-03)
+
+#### Bug Fixes
+
+- sync: stop silently swallowing errors, tolerate pre-order events (546f2a4)
+
+## v0.6.0 (2026-09-03)
 
 #### Features
 
