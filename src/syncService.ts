@@ -90,6 +90,7 @@ async function runCycle(): Promise<void> {
     syncStore.syncStatus = "idle";
   } catch (err) {
     syncStore.syncStatus = err instanceof TypeError ? "offline" : "error";
+    console.error("Sync failed:", err);
   } finally {
     syncing = false;
   }

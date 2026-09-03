@@ -118,9 +118,10 @@ export const useAuthStore = defineStore(
         authStatus.value = "logged-in";
         bootstrapSyncIfNeeded();
         return true;
-      } catch {
+      } catch (err) {
         authStatus.value = "error";
         authError.value = "Could not reach the server.";
+        console.error(`${path} failed:`, err);
         return false;
       }
     };
@@ -143,8 +144,9 @@ export const useAuthStore = defineStore(
             method: "POST",
             headers: { Authorization: `Bearer ${currentToken}` },
           });
-        } catch {
+        } catch (err) {
           // Best-effort - the server session will simply expire on its own.
+          console.error("Logout request failed:", err);
         }
       }
     };
@@ -167,9 +169,10 @@ export const useAuthStore = defineStore(
         const data = (await res.json()) as { email: string };
         email.value = data.email;
         authStatus.value = "logged-in";
-      } catch {
+      } catch (err) {
         // Network error, not an invalid session - keep the token and let the sync engine retry.
         authStatus.value = "logged-in";
+        console.error("Session check failed:", err);
       }
     };
 

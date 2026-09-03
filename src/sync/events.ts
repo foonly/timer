@@ -17,7 +17,10 @@ const tagPayloadSchema = z.object({
   parentUuid: z.string().nullable(),
   name: z.string(),
   description: z.string(),
-  order: z.number(),
+  // Defaulted, not required: events pushed before drag-and-drop reordering was added predate this
+  // field and were stored on the server without it - a pull must still accept them rather than
+  // permanently breaking sync for any device whose cursor starts before that point.
+  order: z.number().default(0),
 });
 
 const tagRemovedPayloadSchema = z.object({
