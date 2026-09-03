@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.5.0 (2026-09-02)
+## 0.6.0 (2026-09-03)
+
+#### Features
+
+- tags: move card actions behind a 3-dot menu (69fec6d)
+- tags: make tags collapsible (27c243c)
+
+#### Bug Fixes
+
+- tags: keep the actions menu pinned in the header corner (856e652)
+- tags: put the timer before its controls, right-align controls (cd1d56d)
+- improve mobile layout below 480px (2f81bf8)
+
+## v0.5.0 (2026-09-02)
 
 #### Features
 
