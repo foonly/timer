@@ -89,6 +89,10 @@ const store = useTimerStore();
     font-weight: normal;
     opacity: 0.7;
   }
+
+  @media screen and (max-width: 480px) {
+    font-size: 1.3rem;
+  }
 }
 .report-total-secondary {
   margin: -0.75rem 0 1rem;

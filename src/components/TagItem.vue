@@ -39,7 +39,7 @@ const childSummary = computed(() => {
 <template>
   <div class="tag card" :data-status="status" :data-tag-id="id">
     <header>
-      <h2>
+      <h2 :class="{ collapsed }">
         <Grip class="icon drag-handle" aria-hidden="true" />
         <IconButton
           :label="collapsed ? 'Expand tag' : 'Collapse tag'"
@@ -136,6 +136,12 @@ header {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+
+  @media screen and (max-width: 480px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
 }
 h2 {
   display: flex;
@@ -150,11 +156,13 @@ h2 {
   }
 
   & .tag-name {
-    flex: none;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   & .child-summary {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -162,6 +170,13 @@ h2 {
     font-size: 0.85em;
     font-weight: 400;
     opacity: 0.55;
+  }
+
+  &.collapsed .tag-name {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   & .drag-handle {
@@ -205,6 +220,10 @@ h2 {
     width: 18px;
     height: 18px;
   }
+
+  @media screen and (max-width: 480px) {
+    justify-content: flex-end;
+  }
 }
 p {
   margin: 0.3rem 0 0;
@@ -221,11 +240,24 @@ p {
     width: 32px;
     height: 32px;
   }
+
+  @media screen and (max-width: 480px) {
+    gap: 0.6rem;
+
+    & .icon {
+      width: 26px;
+      height: 26px;
+    }
+  }
 }
 .tag-time {
   font-size: 1.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+
+  @media screen and (max-width: 480px) {
+    font-size: 1.3rem;
+  }
 }
 .nested {
   margin-top: 1rem;

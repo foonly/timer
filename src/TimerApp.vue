@@ -58,12 +58,23 @@ h1 {
   text-align: center;
   margin-left: 3rem;
   margin-right: 3rem;
+
+  @media screen and (max-width: 480px) {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
 }
 aside.icons {
   position: absolute;
   right: 1rem;
   top: 1rem;
   align-items: center;
+
+  @media screen and (max-width: 480px) {
+    position: static;
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+  }
 }
 .status-legend {
   justify-content: center;
