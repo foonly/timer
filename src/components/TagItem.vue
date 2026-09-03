@@ -78,6 +78,7 @@ const childSummary = computed(() => {
     <template v-if="!collapsed">
       <p>{{ tag.description }}</p>
       <div class="time-row">
+        <TimeDisplay class="tag-time" :time="store.getTime(id)" />
         <section class="controls icons">
           <IconButton
             label="Start"
@@ -104,7 +105,6 @@ const childSummary = computed(() => {
             <Pause class="icon" />
           </IconButton>
         </section>
-        <TimeDisplay class="tag-time" :time="store.getTime(id)" />
       </div>
       <div class="nested"><slot></slot></div>
     </template>
@@ -233,6 +233,7 @@ p {
 .time-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   margin-top: 0.4rem;
 
