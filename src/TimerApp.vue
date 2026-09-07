@@ -31,7 +31,7 @@ const store = useTimerStore();
       </IconButton>
     </aside>
     <SettingsPage v-if="store.isModal('settings')" />
-    <h1>Foonlys Hierarchical Timer</h1>
+    <h1>Hierarchical Timer</h1>
     <div class="status-legend">
       <span class="status-legend-item" v-for="status in legendStatuses" :key="status">
         <StatusDot :status="status" />{{ statusLabels[status] }}
