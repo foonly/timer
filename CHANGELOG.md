@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.6.1 (2026-09-03)
+### 0.6.2 (2026-09-07)
+
+#### Bug Fixes
+
+- ui: shorten main heading (dbae00b)
+
+### v0.6.1 (2026-09-03)
 
 #### Bug Fixes
 
