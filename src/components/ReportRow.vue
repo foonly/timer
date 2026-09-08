@@ -19,7 +19,11 @@ const status = computed(() => store.getStatus(props.id));
         <StatusDot v-if="live" :status="status" />
         <TagPath :id="props.id" highlight-last />
       </span>
-      <TimeDisplay class="row-time" :time="time" />
+      <TimeDisplay
+        class="row-time"
+        :class="{ dim: live && status !== 'running' && status !== 'sub-running' }"
+        :time="time"
+      />
     </button>
     <TimerRecordsModal v-if="store.isModal('records', props.id)" :id="props.id" />
   </div>
@@ -67,5 +71,10 @@ const status = computed(() => store.getStatus(props.id));
   font-size: 1.1rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  transition: opacity 0.15s ease;
+
+  &.dim {
+    opacity: 0.6;
+  }
 }
 </style>

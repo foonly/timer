@@ -56,7 +56,11 @@ const childSummary = computed(() => {
     <template v-if="!collapsed">
       <p>{{ tag.description }}</p>
       <div class="time-row">
-        <TimeDisplay class="tag-time" :time="store.getTime(id)" />
+        <TimeDisplay
+          class="tag-time"
+          :class="{ dim: status !== 'running' && status !== 'sub-running' }"
+          :time="store.getTime(id)"
+        />
         <section class="controls icons">
           <IconButton
             label="Start"
@@ -214,6 +218,11 @@ p {
   font-size: 1.7rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  transition: opacity 0.15s ease;
+
+  &.dim {
+    opacity: 0.6;
+  }
 
   @media screen and (max-width: 480px) {
     font-size: 1.3rem;
