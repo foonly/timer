@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.6.3 (2026-09-08)
+### 0.6.4 (2026-09-08)
+
+#### Styles
+
+- ui: warm up theme palette and stack modal form labels (6fe4b8f)
+
+### v0.6.3 (2026-09-08)
 
 #### Styles
 
