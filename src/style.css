@@ -186,6 +186,18 @@ button {
     margin: 0.25rem auto;
     display: block;
   }
+
+  & label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+
+    & > input,
+    & > select,
+    & > textarea {
+      width: 100%;
+    }
+  }
 }
 
 .modal-buttons {

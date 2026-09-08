@@ -93,11 +93,6 @@ const resetForm = () => {
     opacity: 0.8;
   }
 
-  & input,
-  & textarea {
-    margin-top: 0.2rem;
-  }
-
   & .name-field input {
     font-size: 1.4em;
   }

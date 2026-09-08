@@ -225,11 +225,6 @@ const confirmDelete = () => {
     font-size: 0.85rem;
     opacity: 0.8;
   }
-
-  & input,
-  & textarea {
-    margin-top: 0.2rem;
-  }
 }
 .running-note {
   opacity: 0.7;

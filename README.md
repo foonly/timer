@@ -1,4 +1,4 @@
-# Foonlys Hierarchical Timer
+# Hierarchical Timer
 
 A hierarchical time tracker with a very low barrier of entry. Instead of picking a
 single project from a dropdown, you build a tree of tags — projects, tasks,

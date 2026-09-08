@@ -107,9 +107,5 @@ const submit = async () => {
     font-size: 0.85rem;
     opacity: 0.8;
   }
-
-  & input {
-    margin-top: 0.2rem;
-  }
 }
 </style>
