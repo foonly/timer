@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.6.2 (2026-09-07)
+### 0.6.3 (2026-09-08)
+
+#### Styles
+
+- style: update color theme variables (9a67c2f)
+
+### v0.6.2 (2026-09-07)
 
 #### Bug Fixes
 
