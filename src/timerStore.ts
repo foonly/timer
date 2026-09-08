@@ -691,11 +691,16 @@ export const useTimerStore = defineStore(
       // a tag that only ever showed sub-timer activity) has no timer record of its own to spot it
       // by - so also synthesize every such intermediate ancestor, up to the first id that's still
       // a known tag (or the root), so the walk below can still reach that descendant at all.
+      //
+      // `""` (the root itself, e.g. from the global pause-everything timer) is excluded here even
+      // though it's never a known tag: `parentOf("")` is also `""`, so treating it as a deleted
+      // leaf would make it its own synthesized child, and `visit("")` would recurse into itself
+      // forever.
       const deletedLeafIds = new Set(
         timers.value
           .filter((t) => timerOverlapsRange(t, start, end, now.value))
           .map((t) => t.id)
-          .filter((id) => !knownTagIds.has(id)),
+          .filter((id) => id !== "" && !knownTagIds.has(id)),
       );
       const deletedIds = new Set(deletedLeafIds);
       for (const id of deletedLeafIds) {
