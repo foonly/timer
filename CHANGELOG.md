@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.6.4 (2026-09-08)
+### 0.6.5 (2026-09-08)
+
+#### Styles
+
+- ui: dim time digits on non-running timers (2a26b47)
+
+### v0.6.4 (2026-09-08)
 
 #### Styles
 
