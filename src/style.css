@@ -41,10 +41,10 @@
 :root {
   --fht-font-family: "IBM Plex Serif", serif;
   --fht-time-font-family: "Michroma", sans-serif;
-  --fht-background-color: rgb(20, 20, 20);
-  --fht-text-color: rgb(200, 200, 200);
-  --fht-element-background-color: rgba(40, 40, 40);
-  --fht-element-border-color: rgba(20, 20, 20);
+  --fht-background-color: rgb(26, 19, 15);
+  --fht-text-color: rgb(224, 206, 186);
+  --fht-element-background-color: rgba(48, 36, 29);
+  --fht-element-border-color: rgba(64, 48, 38);
 
   --fht-border-radius: 0.5rem;
   --fht-button-border-radius: 0.33rem;
@@ -52,7 +52,7 @@
   --fht-status-running: rgb(70, 200, 130);
   --fht-status-paused: rgb(230, 175, 45);
   --fht-status-sub-running: rgb(80, 160, 230);
-  --fht-status-idle: rgba(140, 140, 140, 0.35);
+  --fht-status-idle: rgba(150, 135, 115, 0.35);
 
   --fht-space-1: 0.25rem;
   --fht-space-2: 0.5rem;
@@ -89,11 +89,11 @@ html {
 
   &[data-theme="light"] {
     color-scheme: light;
-    --fht-background-color: rgb(200, 200, 200);
-    --fht-text-color: rgb(20, 20, 20);
-    --fht-element-background-color: rgba(180, 180, 180);
-    --fht-element-border-color: rgba(120, 120, 120);
-    --fht-error-color: rgb(190, 40, 40);
+    --fht-background-color: rgb(250, 243, 232);
+    --fht-text-color: rgb(59, 41, 29);
+    --fht-element-background-color: rgb(240, 225, 202);
+    --fht-element-border-color: rgb(196, 168, 138);
+    --fht-error-color: rgb(196, 62, 40);
   }
 }
 
