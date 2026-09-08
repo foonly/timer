@@ -1,6 +1,12 @@
 # Changelog
 
-### 0.6.5 (2026-09-08)
+### 0.6.6 (2026-09-08)
+
+#### Bug Fixes
+
+- store: stop infinite recursion when the root pause timer is active (0778e75)
+
+### v0.6.5 (2026-09-08)
 
 #### Styles
 
