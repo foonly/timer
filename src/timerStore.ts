@@ -7,14 +7,18 @@ import {
   getTimeFromDays,
   formatDayLabel,
   isSelfOrDescendant,
+  ancestorChainIds,
   timerOverlapsRange,
   DAY_CUTOFF_HOUR,
   MS_PER_DAY,
+  OLD_DAY_CACHE_THRESHOLD_DAYS,
 } from "./helpers";
 import { randomTagName } from "./randomNames";
 import { now, dayStarts } from "./clock";
 import { useSyncStore } from "./syncStore";
 import type { SyncEvent } from "./sync/events";
+import { getCached, setCached, invalidateDay, invalidateAll } from "./dayTagAggregateCache";
+import type { DayTagAggregate } from "./dayTagAggregateCache";
 
 export const useTimerStore = defineStore(
   "timer",
@@ -28,6 +32,10 @@ export const useTimerStore = defineStore(
     // null means "today" and tracks the real day as it advances; a number pins the report to
     // that specific day so browsing history doesn't get yanked forward by a real day rollover.
     const viewedDayNumber = ref<number | null>(null);
+    // Set the first time the user answers (either way) the "run the setup wizard?" prompt, so it
+    // never asks again - even if the store is still empty later (e.g. they declined, or accepted
+    // then bailed out without creating anything).
+    const wizardPromptDismissed = ref(false);
 
     // Getters
     const dayEnds = computed(() => {
@@ -42,6 +50,28 @@ export const useTimerStore = defineStore(
     const reportDayLabel = computed(() =>
       formatDayLabel(reportDayNumber.value, todayDayNumber.value),
     );
+
+    // Bounded to just today's (and any still-open) records, so per-second UI ticks that read this
+    // (see getTime, driving TagItem.vue's live display) don't rescan the entire lifetime history.
+    // Depends only on timers.value (structural changes) and dayStarts.value (once/day) - never on
+    // `now`, so it isn't rebuilt every clock tick.
+    const todaysTimers = computed(() =>
+      timers.value.filter((t) => t.end === 0 || t.end > dayStarts.value),
+    );
+
+    // Clears every cached aggregate that `timer` could have contributed to: every day it spans,
+    // and its own id plus every ancestor id - getDayAggregate sums over an id and all of its
+    // descendants, so a leaf timer's change can affect an ancestor's cached total too.
+    const invalidateForTimer = (timer: { id: string; start: number; end: number }) => {
+      const effectiveEnd = timer.end > 0 ? timer.end : now.value;
+      const firstDay = getDayNumber(DAY_CUTOFF_HOUR, timer.start);
+      const lastDay = getDayNumber(DAY_CUTOFF_HOUR, Math.max(timer.start, effectiveEnd - 1));
+      for (let day = firstDay; day <= lastDay; day++) {
+        for (const ancestorId of ancestorChainIds(timer.id)) {
+          invalidateDay(day, ancestorId);
+        }
+      }
+    };
 
     // Actions
     const getTags = (parentTag: string): fhtTag[] => {
@@ -121,6 +151,13 @@ export const useTimerStore = defineStore(
       if (newId === id) {
         return;
       }
+      // A rename/reparent can rewrite the `id` of an unbounded number of timers across an
+      // unbounded number of days at once (the whole subtree's history moves with it) - targeted
+      // per-timer invalidation would need to walk both the old and new ancestor chains for each,
+      // for real but marginal benefit on what's already a rare, user-triggered, non-hot-path
+      // action that already does a full O(tags + timers) walk. A full clear is simpler and cheap
+      // by comparison.
+      invalidateAll();
       for (const other of tags.value) {
         if (other.uuid === tag.uuid) {
           continue;
@@ -146,6 +183,7 @@ export const useTimerStore = defineStore(
       for (const timer of timers.value) {
         if (timer.end === 0 && isSelfOrDescendant(timer.id, remove)) {
           timer.end = stoppedAt;
+          invalidateForTimer({ id: timer.id, start: timer.start, end: stoppedAt });
         }
       }
       tags.value = tags.value.filter((tag) => !isSelfOrDescendant(pathOf(tag), remove));
@@ -353,6 +391,7 @@ export const useTimerStore = defineStore(
             start: event.payload.start,
           });
           timers.value.push(timer);
+          invalidateForTimer(timer);
           return;
         }
         case "timer_stopped": {
@@ -360,6 +399,10 @@ export const useTimerStore = defineStore(
           // seeing this remote event), leave its end time alone.
           const timer = timers.value.find((t) => t.uuid === event.payload.uuid);
           if (timer && timer.end === 0) {
+            // Only the newly-closed range needs invalidating: a day is never cached while any
+            // contributing timer is still open (see getDayAggregate), so the "was open" side of
+            // this transition was never memoized in the first place.
+            invalidateForTimer({ id: timer.id, start: timer.start, end: event.payload.end });
             timer.end = event.payload.end;
           }
           return;
@@ -373,14 +416,20 @@ export const useTimerStore = defineStore(
           if (!timer || event.timestamp <= timer.updatedAt) {
             return; // missing, or a newer local edit wins (last-write-wins)
           }
+          invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
           timer.start = event.payload.start;
           timer.end = event.payload.end;
           timer.description = event.payload.description;
           timer.positive = event.payload.positive;
           timer.updatedAt = event.timestamp;
+          invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
           return;
         }
         case "timer_removed": {
+          const timer = timers.value.find((t) => t.uuid === event.payload.uuid);
+          if (timer) {
+            invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
+          }
           timers.value = timers.value.filter((t) => t.uuid !== event.payload.uuid);
           return;
         }
@@ -514,11 +563,13 @@ export const useTimerStore = defineStore(
         return;
       }
       const timestamp = Date.now();
+      invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
       timer.start = fields.start;
       timer.end = fields.end;
       timer.description = fields.description;
       timer.positive = fields.positive;
       timer.updatedAt = timestamp;
+      invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
       useSyncStore().enqueueEvent({
         id: crypto.randomUUID(),
         type: "timer_updated",
@@ -540,6 +591,7 @@ export const useTimerStore = defineStore(
       if (!timer) {
         return;
       }
+      invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
       timers.value = timers.value.filter((t) => t.uuid !== uuid);
       useSyncStore().enqueueEvent({
         id: crypto.randomUUID(),
@@ -597,15 +649,29 @@ export const useTimerStore = defineStore(
     // and correspondingly must NOT contribute the portion outside this window - otherwise that
     // time either vanishes (excluded from every day) or gets double-counted (attributed both to
     // the day it started on and the day it's viewed from).
-    const getRecordsInRange = (id: string, rangeStart: number, rangeEnd: number) => {
+    // Like getRecordsInRange, but also reports whether any window timer was still open
+    // (end === 0) - used by getDayAggregate to decide whether a result is safe to cache long-term.
+    // `nowValue`/`candidates` are explicit parameters (defaulting to the live clock/full history)
+    // rather than closed over, mirroring timerOverlapsRange's own convention: it lets a past day's
+    // total be computed with a fixed sentinel instead of the live clock (so it creates no reactive
+    // dependency on it) and lets today's total be computed over a small pre-filtered candidate list
+    // instead of the entire lifetime history (see todaysTimers).
+    const getRecordsInRangeWithMeta = (
+      id: string,
+      rangeStart: number,
+      rangeEnd: number,
+      nowValue: number = now.value,
+      candidates: fhtTimer[] = timers.value,
+    ) => {
       const clipToRange = (t: { start: number; end: number }) => ({
         start: Math.max(t.start, rangeStart),
-        end: Math.min(t.end > 0 ? t.end : now.value, rangeEnd),
+        end: Math.min(t.end > 0 ? t.end : nowValue, rangeEnd),
       });
 
-      const windowTimers = timers.value.filter((t) =>
-        timerOverlapsRange(t, rangeStart, rangeEnd, now.value),
+      const windowTimers = candidates.filter((t) =>
+        timerOverlapsRange(t, rangeStart, rangeEnd, nowValue),
       );
+      const touchesOpenTimer = windowTimers.some((t) => t.end === 0);
 
       const records: Array<{ start: number; end: number; id: string }> = [];
       // Clone the timer records to be able to modify them.
@@ -633,29 +699,44 @@ export const useTimerStore = defineStore(
         }
       }
 
-      return records;
+      return { records, touchesOpenTimer };
     };
+
+    // Core interval-subtraction step, bounded to an arbitrary [rangeStart, rangeEnd) window so it
+    // can serve both the live "today" total and a fixed historical day's report. Returns the
+    // still-open-ended list of positive records for `id` and its descendants, each clipped to the
+    // window and with any overlapping negative (pause) timer already carved out - callers decide
+    // separately whether to sum these raw (double-counting concurrent records) or merge them into
+    // a deduped union.
+    //
+    // Filtering (and clipping) by overlap rather than by `t.start` alone matters for a timer that
+    // was already running when rangeStart hit (e.g. one still open from before the 04:00 day
+    // cutoff): it must contribute its portion inside this window even though it started earlier,
+    // and correspondingly must NOT contribute the portion outside this window - otherwise that
+    // time either vanishes (excluded from every day) or gets double-counted (attributed both to
+    // the day it started on and the day it's viewed from).
+    const getRecordsInRange = (
+      id: string,
+      rangeStart: number,
+      rangeEnd: number,
+      nowValue: number = now.value,
+      candidates: fhtTimer[] = timers.value,
+    ) => getRecordsInRangeWithMeta(id, rangeStart, rangeEnd, nowValue, candidates).records;
 
     // Sum of each record's own duration, so two timers tracked concurrently (e.g. on unrelated
     // tags) each contribute their full length even though they cover the same wall-clock time.
-    const getRawTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
-      return getRecordsInRange(id, rangeStart, rangeEnd).reduce(
-        (sum, r) => sum + (r.end - r.start),
-        0,
-      );
-    };
+    const sumRawTime = (records: Array<{ start: number; end: number }>) =>
+      records.reduce((sum, r) => sum + (r.end - r.start), 0);
 
     // Union of the records' time ranges, so concurrent/overlapping records (e.g. a broad tag and a
     // nested sub-tag both tracked at once) count that wall-clock time only once. `coveredUntil`
     // tracks the furthest point the union has reached so far - a record that ends before that point
     // is already fully covered and contributes nothing, and one that extends past it only
     // contributes the new, not-yet-covered portion.
-    const getTimeInRange = (id: string, rangeStart: number, rangeEnd: number) => {
+    const unionTime = (records: Array<{ start: number; end: number }>) => {
       let time = 0;
       let coveredUntil = 0;
-      for (const r of getRecordsInRange(id, rangeStart, rangeEnd).sort(
-        (a, b) => a.start - b.start,
-      )) {
+      for (const r of [...records].sort((a, b) => a.start - b.start)) {
         if (r.end <= coveredUntil) {
           continue;
         }
@@ -665,7 +746,79 @@ export const useTimerStore = defineStore(
       return time;
     };
 
-    const getTime = (id: string) => getTimeInRange(id, dayStarts.value, dayEnds.value);
+    const getTimeInRange = (
+      id: string,
+      rangeStart: number,
+      rangeEnd: number,
+      nowValue: number = now.value,
+      candidates: fhtTimer[] = timers.value,
+    ) => unionTime(getRecordsInRange(id, rangeStart, rangeEnd, nowValue, candidates));
+
+    // "Today" only - always computed live over the small todaysTimers candidate list (see its own
+    // comment), never routed through the day-aggregate cache below (today is never cache-eligible).
+    const getTime = (id: string) =>
+      getTimeInRange(id, dayStarts.value, dayEnds.value, now.value, todaysTimers.value);
+
+    const isDayCacheEligible = (dayNumber: number) =>
+      todayDayNumber.value - dayNumber >= OLD_DAY_CACHE_THRESHOLD_DAYS;
+
+    // The single cache-aware entry point for "total time for `id` on day `dayNumber`". Days more
+    // than OLD_DAY_CACHE_THRESHOLD_DAYS in the past are served from dayTagAggregateCache once
+    // computed; today and recent days always compute live so they reflect the running clock and
+    // in-progress edits immediately. A result is only ever cached when nothing contributing to it
+    // was still open at compute time (see `volatile` on DayTagAggregate) - an open timer's true
+    // contribution to a day isn't known until it closes.
+    // The actual from-scratch computation getDayAggregate falls back to on a cache miss - split
+    // out so a dev-mode cache hit can also call it, to cross-check that the cache never disagrees
+    // with a fresh scan (see the DEV branch in getDayAggregate below).
+    const computeDayAggregate = (id: string, dayNumber: number): DayTagAggregate => {
+      const isPast = dayNumber < todayDayNumber.value;
+      const rangeStart = getTimeFromDays(dayNumber);
+      const rangeEnd = rangeStart + MS_PER_DAY;
+      // A day that's fully in the past has a provably fixed set of records regardless of the
+      // current time - using a fixed sentinel here (rather than now.value) means this computation
+      // never reads the live clock, so it creates no reactive dependency on it.
+      const nowValue = isPast ? Number.MAX_SAFE_INTEGER : now.value;
+      const { records, touchesOpenTimer } = getRecordsInRangeWithMeta(
+        id,
+        rangeStart,
+        rangeEnd,
+        nowValue,
+      );
+      return {
+        rawTime: sumRawTime(records),
+        netTime: unionTime(records),
+        volatile: touchesOpenTimer,
+      };
+    };
+
+    const getDayAggregate = (id: string, dayNumber: number): DayTagAggregate => {
+      const eligible = isDayCacheEligible(dayNumber);
+      if (eligible) {
+        const cached = getCached(dayNumber, id);
+        if (cached) {
+          // Dev-only: on every cache hit, also recompute live and flag any disagreement. Zero
+          // cost in production (import.meta.env.DEV is false there) - this is a continuous
+          // correctness check against the user's own real historical data, which is more
+          // representative than any fixed set of synthetic test fixtures could be.
+          if (import.meta.env.DEV) {
+            const fresh = computeDayAggregate(id, dayNumber);
+            if (fresh.netTime !== cached.netTime || fresh.rawTime !== cached.rawTime) {
+              console.error(
+                `Day-tag aggregate cache mismatch for day ${dayNumber}, id "${id}": ` +
+                  `cached=${JSON.stringify(cached)} fresh=${JSON.stringify(fresh)}`,
+              );
+            }
+          }
+          return cached;
+        }
+      }
+      const result = computeDayAggregate(id, dayNumber);
+      if (eligible && !result.volatile) {
+        setCached(dayNumber, id, result);
+      }
+      return result;
+    };
 
     // One rollup total per tag id that has any time on the viewed day, in depth-first tree order
     // (a parent immediately followed by its children, siblings by when their subtree's activity
@@ -682,6 +835,12 @@ export const useTimerStore = defineStore(
     const reportEntries = computed(() => {
       const start = reportDayStart.value;
       const end = reportDayEnd.value;
+      // A fully past viewed day has a fixed set of records regardless of the current time - using
+      // a fixed sentinel instead of now.value means this computed doesn't depend on the clock (and
+      // so doesn't re-run every tick) while viewing an old day. Mirrors getDayAggregate's own
+      // isPast/nowValue choice for the same day, so the two stay consistent.
+      const isPast = reportDayNumber.value < todayDayNumber.value;
+      const nowValue = isPast ? Number.MAX_SAFE_INTEGER : now.value;
       const entries: Array<{ id: string; time: number }> = [];
 
       const knownTagIds = new Set(tags.value.map((tag) => `${tag.parent}//${tag.name}`));
@@ -698,7 +857,7 @@ export const useTimerStore = defineStore(
       // forever.
       const deletedLeafIds = new Set(
         timers.value
-          .filter((t) => timerOverlapsRange(t, start, end, now.value))
+          .filter((t) => timerOverlapsRange(t, start, end, nowValue))
           .map((t) => t.id)
           .filter((id) => id !== "" && !knownTagIds.has(id)),
       );
@@ -713,7 +872,7 @@ export const useTimerStore = defineStore(
       const earliestActivity = (id: string) => {
         const starts = timers.value
           .filter(
-            (t) => timerOverlapsRange(t, start, end, now.value) && isSelfOrDescendant(t.id, id),
+            (t) => timerOverlapsRange(t, start, end, nowValue) && isSelfOrDescendant(t.id, id),
           )
           .map((t) => t.start);
         return starts.length ? Math.min(...starts) : Infinity;
@@ -726,7 +885,7 @@ export const useTimerStore = defineStore(
           (a, b) => earliestActivity(a) - earliestActivity(b),
         );
         for (const id of children) {
-          const time = getTimeInRange(id, start, end);
+          const time = getDayAggregate(id, reportDayNumber.value).netTime;
           if (time > 0) {
             entries.push({ id, time });
           }
@@ -738,22 +897,23 @@ export const useTimerStore = defineStore(
       return entries;
     });
 
+    // Shared by reportDayTotal/reportDayActiveTime below so the underlying scan (and cache lookup)
+    // for the viewed day's root aggregate only happens once, not once per computed.
+    const reportDayRootAggregate = computed(() => getDayAggregate("", reportDayNumber.value));
+
     // "Total tracked": every tracked timer counts its full length, even if two ran concurrently
     // (e.g. on unrelated tags) - a measure of total logged effort, not wall-clock time.
-    const reportDayTotal = computed(() =>
-      getRawTimeInRange("", reportDayStart.value, reportDayEnd.value),
-    );
+    const reportDayTotal = computed(() => reportDayRootAggregate.value.rawTime);
 
     // "Time active": the wall-clock time during which at least one timer was running that day -
     // concurrent/overlapping timers are merged so that time isn't counted twice.
-    const reportDayActiveTime = computed(() =>
-      getTimeInRange("", reportDayStart.value, reportDayEnd.value),
-    );
+    const reportDayActiveTime = computed(() => reportDayRootAggregate.value.netTime);
 
     return {
       tags,
       timers,
       modal,
+      wizardPromptDismissed,
       dayEnds,
       reportDayStart,
       reportDayEnd,
@@ -792,7 +952,7 @@ export const useTimerStore = defineStore(
   },
   {
     persist: {
-      paths: ["tags", "timers", "collapsedTagIds"],
+      paths: ["tags", "timers", "collapsedTagIds", "wizardPromptDismissed"],
     },
   },
 );

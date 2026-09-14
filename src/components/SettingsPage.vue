@@ -4,7 +4,9 @@ import ModalDialog from "./ModalDialog.vue";
 import { version } from "../../package.json";
 import { useAuthStore } from "../authStore";
 import { useSyncStore } from "../syncStore";
+import { useTimerStore } from "../timerStore";
 
+const store = useTimerStore();
 const authStore = useAuthStore();
 const syncStore = useSyncStore();
 
@@ -72,6 +74,14 @@ const submit = async () => {
         </p>
       </template>
     </section>
+    <section class="setup">
+      <h2>Setup wizard</h2>
+      <div class="modal-buttons">
+        <button type="button" class="btn-secondary" @click="store.openModal('setup-wizard')">
+          Run setup wizard
+        </button>
+      </div>
+    </section>
     <p class="version">Version {{ version }}</p>
   </ModalDialog>
 </template>
@@ -81,7 +91,8 @@ const submit = async () => {
   padding: 0 1rem;
   opacity: 0.5;
 }
-.account {
+.account,
+.setup {
   padding: 0 1rem;
 
   & h2 {

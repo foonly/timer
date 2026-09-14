@@ -22,6 +22,33 @@ export function isSelfOrDescendant(id: string, ancestor: string): boolean {
   return id === ancestor || id.startsWith(`${ancestor}//`);
 }
 
+// `id` itself plus every ancestor up to the root ("" for id="", or ["", "//a", "//a//b", ...] for
+// a nested id) - used to invalidate every cached aggregate that a given leaf timer contributes to,
+// since getTimeInRange(id, ...) sums over `id` and all of its descendants.
+//
+// A root-level tag's id is "//name" (pathOf: `${parent}//${name}`, and a root-level tag's parent
+// is "" - see timerStore.ts), so id.split("//") always starts with a leading "" segment. Prefixes
+// are rebuilt by cumulatively re-joining with "//" from that leading segment, rather than by
+// filtering it out, so each rebuilt ancestor id exactly matches the real id strings used
+// everywhere else (isSelfOrDescendant, getDayAggregate's cache keys, ...).
+export function ancestorChainIds(id: string): string[] {
+  if (id === "") {
+    return [""];
+  }
+  const parts = id.split("//");
+  const ids: string[] = [""];
+  let path = "";
+  for (let i = 1; i < parts.length; i++) {
+    path += `//${parts[i]}`;
+    ids.push(path);
+  }
+  return ids;
+}
+
+// A day older than this many days ago is old enough that its raw records are effectively
+// immutable in practice, so its per-tag totals are safe to memoize in dayTagAggregateCache.ts.
+export const OLD_DAY_CACHE_THRESHOLD_DAYS = 30;
+
 // The hour at which a new "day" begins for reporting purposes, so a late-night session before
 // this hour still counts as the previous day. Threaded through as the default `offset` on every
 // function below rather than baked into the math, so a caller could still view a different cutoff.

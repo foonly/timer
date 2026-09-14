@@ -3,6 +3,8 @@ import ListTags from "./components/ListTags.vue";
 import DailyReport from "./components/DailyReport.vue";
 import StatusDot from "./components/StatusDot.vue";
 import SettingsPage from "./components/SettingsPage.vue";
+import SetupWizardPrompt from "./components/SetupWizardPrompt.vue";
+import SetupWizard from "./components/SetupWizard.vue";
 import SyncStatus from "./components/SyncStatus.vue";
 import DarkLight from "./assets/dark-light.svg";
 import Settings from "./assets/settings.svg";
@@ -31,6 +33,8 @@ const store = useTimerStore();
       </IconButton>
     </aside>
     <SettingsPage v-if="store.isModal('settings')" />
+    <SetupWizardPrompt v-if="store.isModal('setup-wizard-prompt')" />
+    <SetupWizard v-if="store.isModal('setup-wizard')" />
     <h1>Hierarchical Timer</h1>
     <div class="status-legend">
       <span class="status-legend-item" v-for="status in legendStatuses" :key="status">

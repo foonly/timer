@@ -29,6 +29,12 @@ startClock();
 initDarkLightMode();
 
 useTimerStore().migrateUuids();
+
+const timerStore = useTimerStore();
+if (timerStore.tags.length === 0 && !timerStore.wizardPromptDismissed) {
+  timerStore.openModal("setup-wizard-prompt");
+}
+
 void useAuthStore().checkSession();
 startSyncEngine();
 
