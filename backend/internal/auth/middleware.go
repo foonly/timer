@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +19,14 @@ const userIDKey = "user_id"
 // sessionRefreshThrottle bounds how often an active session's expiry is
 // extended, so a busy device doesn't trigger a sessions UPDATE on every request.
 const sessionRefreshThrottle = 1 * time.Hour
+
+// hashToken is how a session token is stored and looked up: the database only ever sees this,
+// never the bearer token itself. Plain SHA-256 is enough (no salt or slow hash needed) because
+// tokens are 32 random bytes, not guessable passwords. Must match migration 000003.
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
 
 func bearerToken(r *http.Request) string {
 	const prefix = "Bearer "
@@ -40,11 +50,12 @@ func SessionMiddleware(db *pgxpool.Pool) func(http.Handler) http.Handler {
 				return
 			}
 
+			tokenHash := hashToken(token)
 			var userID uuid.UUID
 			var expiresAt, lastUsedAt time.Time
 			err := db.QueryRow(r.Context(),
-				"SELECT user_id, expires_at, last_used_at FROM sessions WHERE token = $1",
-				token).Scan(&userID, &expiresAt, &lastUsedAt)
+				"SELECT user_id, expires_at, last_used_at FROM sessions WHERE token_hash = $1",
+				tokenHash).Scan(&userID, &expiresAt, &lastUsedAt)
 			if err != nil {
 				next.ServeHTTP(w, r)
 				return
@@ -52,7 +63,7 @@ func SessionMiddleware(db *pgxpool.Pool) func(http.Handler) http.Handler {
 
 			now := time.Now()
 			if now.After(expiresAt) {
-				_, _ = db.Exec(r.Context(), "DELETE FROM sessions WHERE token = $1", token)
+				_, _ = db.Exec(r.Context(), "DELETE FROM sessions WHERE token_hash = $1", tokenHash)
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -62,8 +73,8 @@ func SessionMiddleware(db *pgxpool.Pool) func(http.Handler) http.Handler {
 			if now.Sub(lastUsedAt) > sessionRefreshThrottle {
 				newExpiresAt := now.Add(sessionDuration)
 				_, _ = db.Exec(r.Context(),
-					"UPDATE sessions SET last_used_at = $1, expires_at = $2 WHERE token = $3",
-					now, newExpiresAt, token)
+					"UPDATE sessions SET last_used_at = $1, expires_at = $2 WHERE token_hash = $3",
+					now, newExpiresAt, tokenHash)
 			}
 
 			ctx := context.WithValue(r.Context(), userIDKey, userID)

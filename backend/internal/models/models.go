@@ -15,7 +15,7 @@ type User struct {
 }
 
 type Session struct {
-	Token      string    `json:"token"`
+	TokenHash  string    `json:"-"`
 	UserID     uuid.UUID `json:"userId"`
 	CreatedAt  time.Time `json:"createdAt"`
 	LastUsedAt time.Time `json:"lastUsedAt"`

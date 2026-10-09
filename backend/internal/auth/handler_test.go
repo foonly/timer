@@ -2,11 +2,14 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -45,6 +48,16 @@ func TestValidateSignup(t *testing.T) {
 // internal/sync/handler_test.go). Each test gets its own fresh, fully migrated schema.
 func setupHandler(t *testing.T) (*Handler, *pgxpool.Pool) {
 	t.Helper()
+	pool := setupSchema(t)
+	if err := db.RunMigrations(context.Background(), pool, migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	return NewHandler(pool), pool
+}
+
+// setupSchema returns a pool on a fresh, empty schema (no migrations applied).
+func setupSchema(t *testing.T) *pgxpool.Pool {
+	t.Helper()
 	url := os.Getenv("TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("TEST_DATABASE_URL not set")
@@ -72,10 +85,7 @@ func setupHandler(t *testing.T) (*Handler, *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	if err := db.RunMigrations(ctx, pool, migrations.FS); err != nil {
-		t.Fatal(err)
-	}
-	return NewHandler(pool), pool
+	return pool
 }
 
 func signup(h *Handler, body string) *httptest.ResponseRecorder {
@@ -167,5 +177,97 @@ func TestLoginErrors(t *testing.T) {
 	}
 	if rec := login(h, `{"email":"a@example.com","password":"password"}`); rec.Code != http.StatusInternalServerError {
 		t.Fatalf("database error: status %d, want 500: %s", rec.Code, rec.Body)
+	}
+}
+
+// authenticatedUser runs a request carrying `token` through SessionMiddleware and returns the
+// user it resolved to, if any.
+func authenticatedUser(pool *pgxpool.Pool, token string) (uuid.UUID, bool) {
+	var userID uuid.UUID
+	var ok bool
+	handler := SessionMiddleware(pool)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID, ok = r.Context().Value(userIDKey).(uuid.UUID)
+	}))
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+	return userID, ok
+}
+
+func TestSessionTokensAreStoredHashed(t *testing.T) {
+	h, pool := setupHandler(t)
+	ctx := context.Background()
+	rec := signup(h, `{"email":"a@example.com","password":"password"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("signup: status %d: %s", rec.Code, rec.Body)
+	}
+	var session sessionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+
+	var stored string
+	if err := pool.QueryRow(ctx, "SELECT token_hash FROM sessions").Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored == session.Token || strings.Contains(stored, session.Token) {
+		t.Fatal("raw token stored in the database")
+	}
+	if stored != hashToken(session.Token) {
+		t.Fatalf("stored %q, want hashToken(token)", stored)
+	}
+
+	if _, ok := authenticatedUser(pool, session.Token); !ok {
+		t.Fatal("token did not authenticate")
+	}
+	// Presenting the stored hash itself must not work - that's the point of hashing.
+	if _, ok := authenticatedUser(pool, stored); ok {
+		t.Fatal("the stored hash authenticated as a token")
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer "+session.Token)
+	h.Logout(httptest.NewRecorder(), req)
+	if _, ok := authenticatedUser(pool, session.Token); ok {
+		t.Fatal("token still authenticates after logout")
+	}
+}
+
+// A session created before migration 000003 (raw token stored) must keep working after it - this
+// also checks that the migration's SQL hashing matches hashToken byte for byte.
+func TestExistingSessionsSurviveTokenHashingMigration(t *testing.T) {
+	pool := setupSchema(t)
+	ctx := context.Background()
+
+	before := fstest.MapFS{}
+	for _, name := range []string{"000001_init.up.sql", "000002_normalize_emails.up.sql"} {
+		data, err := fs.ReadFile(migrations.FS, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		before[name] = &fstest.MapFile{Data: data}
+	}
+	if err := db.RunMigrations(ctx, pool, before); err != nil {
+		t.Fatal(err)
+	}
+	var userID uuid.UUID
+	if err := pool.QueryRow(ctx,
+		"INSERT INTO users (email, password_hash) VALUES ('a@example.com', 'x') RETURNING id",
+	).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	token := generateToken()
+	if _, err := pool.Exec(ctx,
+		"INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, now() + interval '1 day')",
+		token, userID); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.RunMigrations(ctx, pool, migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := authenticatedUser(pool, token)
+	if !ok || got != userID {
+		t.Fatalf("pre-migration token resolved to (%v, %v), want (%v, true)", got, ok, userID)
 	}
 }

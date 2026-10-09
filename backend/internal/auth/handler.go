@@ -144,7 +144,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	if token := bearerToken(r); token != "" {
-		_, _ = h.DB.Exec(r.Context(), "DELETE FROM sessions WHERE token = $1", token)
+		_, _ = h.DB.Exec(r.Context(), "DELETE FROM sessions WHERE token_hash = $1", hashToken(token))
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -173,8 +173,8 @@ func (h *Handler) createSession(w http.ResponseWriter, r *http.Request, userID u
 	expiresAt := time.Now().Add(sessionDuration)
 
 	_, err := h.DB.Exec(r.Context(),
-		"INSERT INTO sessions (token, user_id, expires_at) VALUES ($1, $2, $3)",
-		token, userID, expiresAt)
+		"INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)",
+		hashToken(token), userID, expiresAt)
 	if err != nil {
 		http.Error(w, "Failed to create session", http.StatusInternalServerError)
 		return
