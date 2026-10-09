@@ -1,6 +1,29 @@
 # Changelog
 
-### 0.6.6 (2026-09-08)
+## 0.7.0 (2026-10-09)
+
+#### Features
+
+- server: body size limits, timeouts and graceful shutdown (1090d12)
+- auth: rate-limit login and signup attempts (82cee06)
+- wizard: Add setup wizard to help with onboarding. (914498c)
+
+#### Bug Fixes
+
+- sync: complete the first-login bootstrap and keep remote edits (59a0f5f)
+- auth: store session tokens hashed (3c221ab)
+- auth: validate signup, normalize emails, stop masking DB errors (282cde0)
+- db: make migrations atomic, serialized and embedded (bb67273)
+- sync: serialize a user's pushes so pulls can't skip events (3ab8576)
+- sync: reset per-account state, skip malformed events, keep session on 5xx (1893393)
+- correct pause subtraction, tag rename and form validation (bab2e60)
+
+#### Refactor
+
+- backend: share auth context helpers, rename sync package (0ac418d)
+- tidy timer store, sync events and helpers (a4b5aa0)
+
+### v0.6.6 (2026-09-08)
 
 #### Bug Fixes
 
@@ -166,7 +189,8 @@
 
 - deps: configure pnpm workspace dependencies (7658008)
 
-### Misc
+#### Misc
+
 - Keep deleted tags in their original position in the report (8a09352)
 - Stop open timers when their tag is deleted (e41e60e)
 - Keep a deleted tag's own row in the report, not just its surviving ancestor's (d6ceaf5)
@@ -186,7 +210,8 @@
 - config: add foonver.toml configuration file (719ad4d)
 - vscode: remove extensions configuration (b42411b)
 
-### Misc
+#### Misc
+
 - Give Resume its own icon instead of reusing plain Play (3192502)
 - Show pause/resume on tags that only have sub-timers running (1dcf9ba)
 - Include sub-timer-only tags in the report, in tree order; fix a sibling-name prefix bug (f893a1d)
@@ -207,7 +232,8 @@
 
 ### v0.0.10 (2024-03-25)
 
-### Misc
+#### Misc
+
 - Some styling (f6a0fb1)
 - Combined daily timers, needs styling. (b18f846)
 - Timer positive optional (2bbf0d7)
@@ -215,41 +241,48 @@
 
 ### v0.0.9 (2024-03-19)
 
-### Misc
+#### Misc
+
 - Hopefully working calculation. (33a6a98)
 - Almost working, but completely wrong time calc. (6477766)
 
 ### v0.0.8 (2024-03-18)
 
-### Misc
+#### Misc
+
 - Added pause button (bcb4b57)
 - Change to manifest file. (b5ef09b)
 - Styling cleanup (c9ebee3)
 
 ### v0.0.7 (2024-03-17)
 
-### Misc
+#### Misc
+
 - Formatting (b6da650)
 - Styling and some conditional logic (a2f4986)
 
 ### v0.0.6 (2024-03-14)
 
-### Misc
+#### Misc
+
 - PWA (577225a)
 
 ### v0.0.5 (2024-03-11)
 
-### Misc
+#### Misc
+
 - Deploy script (08bcf3c)
 
 ### v0.0.4 (2024-03-11)
 
-### Misc
+#### Misc
+
 - Updated lock file (04fd420)
 
 ### v0.0.3 (2024-03-11)
 
-### Misc
+#### Misc
+
 - Formatting (b974d1a)
 - Basic timer logic. (b76733e)
 - TimeDisplay component (e1c5d28)
@@ -259,7 +292,8 @@
 
 ### v0.0.2 (2024-02-26)
 
-### Misc
+#### Misc
+
 - Test github action (99bb306)
 - Basic Tag management working. (d6c1740)
 - Basic tag display (51fcd16)
