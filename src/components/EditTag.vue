@@ -30,20 +30,31 @@ const parentOptions = computed(() => {
     .sort((a, b) => a.label.localeCompare(b.label));
 });
 
+const nameError = computed(() =>
+  store.tagNameError(
+    props.id ? selectedParent.value : props.parent,
+    name.value,
+    existingTag.value?.uuid,
+  ),
+);
+
 const submitted = () => {
+  if (nameError.value) {
+    return;
+  }
   if (props.id && existingTag.value) {
     const order =
       selectedParent.value === existingTag.value.parent
         ? existingTag.value.order
         : store.nextOrderAfter(selectedParent.value);
     store.updateTag(props.id, {
-      name: name.value,
+      name: name.value.trim(),
       parent: selectedParent.value,
       description: description.value,
       order,
     });
   } else {
-    store.addTag(props.parent, name.value, description.value);
+    store.addTag(props.parent, name.value.trim(), description.value);
   }
   resetForm();
 };
@@ -58,7 +69,7 @@ const resetForm = () => {
 
 <template>
   <ModalDialog :title="props.title">
-    <form @submit="submitted">
+    <form @submit.prevent="submitted">
       <div class="form-stack">
         <label class="name-field">
           Name
@@ -78,9 +89,12 @@ const resetForm = () => {
           <textarea v-model="description" placeholder="Description"></textarea>
         </label>
       </div>
+      <p class="error" v-if="name && nameError">{{ nameError }}</p>
       <div class="modal-buttons">
         <button type="reset" class="btn-secondary" @click="resetForm">Cancel</button>
-        <button type="submit" class="btn-primary">{{ props.id ? "Save" : "Add" }}</button>
+        <button type="submit" class="btn-primary" :disabled="!!nameError">
+          {{ props.id ? "Save" : "Add" }}
+        </button>
       </div>
     </form>
   </ModalDialog>
@@ -96,5 +110,9 @@ const resetForm = () => {
   & .name-field input {
     font-size: 1.4em;
   }
+}
+.error {
+  color: var(--fht-error-color);
+  font-size: 0.85rem;
 }
 </style>

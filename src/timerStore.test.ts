@@ -356,3 +356,99 @@ describe("day-tag aggregate cache", () => {
     expect(store.getTime(workId)).toBe(3_600_000);
   });
 });
+
+describe("pause subtraction", () => {
+  const MIN = 60_000;
+  const pauseAll = (start: number, end: number) =>
+    makeTimer({ id: "", positive: false, start, end });
+  const record = (start: number, end: number) => makeTimer({ id: "//a", start, end });
+
+  it("removes a record entirely when a pause fully covers it", () => {
+    const store = useTimerStore();
+    store.timers = [
+      pauseAll(FIXED_NOW - 60 * MIN, FIXED_NOW - 10 * MIN),
+      record(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+    ];
+    expect(store.getTime("//a")).toBe(0);
+  });
+
+  it("removes a record when a pause covers it exactly", () => {
+    const store = useTimerStore();
+    store.timers = [
+      pauseAll(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+      record(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+    ];
+    expect(store.getTime("//a")).toBe(0);
+  });
+
+  it("trims a pause overlapping the record's start", () => {
+    const store = useTimerStore();
+    store.timers = [
+      pauseAll(FIXED_NOW - 60 * MIN, FIXED_NOW - 45 * MIN),
+      record(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+    ];
+    expect(store.getTime("//a")).toBe(5 * MIN);
+  });
+
+  it("trims a pause overlapping the record's end", () => {
+    const store = useTimerStore();
+    store.timers = [
+      pauseAll(FIXED_NOW - 45 * MIN, FIXED_NOW - 30 * MIN),
+      record(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+    ];
+    expect(store.getTime("//a")).toBe(5 * MIN);
+  });
+
+  it("splits a record around a pause strictly inside it", () => {
+    const store = useTimerStore();
+    store.timers = [
+      pauseAll(FIXED_NOW - 48 * MIN, FIXED_NOW - 45 * MIN),
+      record(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+    ];
+    expect(store.getTime("//a")).toBe(7 * MIN);
+  });
+
+  it("ignores a pause on an unrelated tag", () => {
+    const store = useTimerStore();
+    store.timers = [
+      makeTimer({ id: "//b", positive: false, start: FIXED_NOW - 60 * MIN, end: FIXED_NOW }),
+      record(FIXED_NOW - 50 * MIN, FIXED_NOW - 40 * MIN),
+    ];
+    expect(store.getTime("//a")).toBe(10 * MIN);
+  });
+});
+
+describe("tag rename", () => {
+  it("carries collapse state for the tag and its descendants over to the new path", () => {
+    const store = useTimerStore();
+    store.addTag("", "Old");
+    store.addTag("//Old", "Child");
+    store.toggleCollapsed("//Old");
+    store.toggleCollapsed("//Old//Child");
+
+    store.updateTag("//Old", { name: "New", parent: "", description: "", order: 0 });
+
+    expect(store.isCollapsed("//New")).toBe(true);
+    expect(store.isCollapsed("//New//Child")).toBe(true);
+    expect(store.isCollapsed("//Old")).toBe(false);
+  });
+});
+
+describe("tagNameError", () => {
+  it("rejects empty, separator-containing and duplicate sibling names", () => {
+    const store = useTimerStore();
+    store.addTag("", "Work");
+    expect(store.tagNameError("", "   ")).not.toBe("");
+    expect(store.tagNameError("", "a//b")).not.toBe("");
+    expect(store.tagNameError("", "Work")).not.toBe("");
+    expect(store.tagNameError("", " Work ")).not.toBe("");
+  });
+
+  it("accepts a fresh name, the same name under another parent, and a tag's own name", () => {
+    const store = useTimerStore();
+    const work = store.addTag("", "Work");
+    expect(store.tagNameError("", "Home")).toBe("");
+    expect(store.tagNameError("//Work", "Work")).toBe("");
+    expect(store.tagNameError("", "Work", work.uuid)).toBe("");
+  });
+});

@@ -105,20 +105,51 @@ export function getTimeFromDays(days: number, offset = DAY_CUTOFF_HOUR) {
   return date.getTime();
 }
 
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
 // Converts an epoch-ms timestamp to the local `YYYY-MM-DDTHH:mm:ss` string a
 // <input type="datetime-local" step="1"> expects, and back. `fromDatetimeLocal`
 // relies on `new Date(string)` parsing that exact format as local time (not UTC).
 export function toDatetimeLocal(ms: number): string {
   const date = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-  );
+  const day = `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  return `${day}T${formatClockTime(ms)}`;
+}
+
+// Local wall-clock `HH:mm:ss`, zero-padded.
+export function formatClockTime(ms: number): string {
+  const date = new Date(ms);
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
 export function fromDatetimeLocal(value: string): number {
   return new Date(value).getTime();
+}
+
+// Validation for TimerRecordsModal's edit form. A still-running record has no end input, but its
+// start is still editable, so it must still be present, parseable and not in the future (which
+// would make the running record contribute negative time). Returns "" when the inputs are valid.
+export function recordEditError(
+  running: boolean,
+  startInput: string,
+  endInput: string,
+  now: number,
+): string {
+  const start = fromDatetimeLocal(startInput);
+  if (!startInput || Number.isNaN(start)) {
+    return "Start is required.";
+  }
+  if (running) {
+    return start > now ? "Start can't be in the future." : "";
+  }
+  const end = fromDatetimeLocal(endInput);
+  if (!endInput || Number.isNaN(end)) {
+    return "End is required.";
+  }
+  if (end <= start) {
+    return "End must be after start.";
+  }
+  return "";
 }
 
 export function formatDayLabel(dayNumber: number, todayNumber: number, offset = DAY_CUTOFF_HOUR) {

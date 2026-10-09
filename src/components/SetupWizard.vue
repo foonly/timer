@@ -17,8 +17,15 @@ const projectPath = computed(() =>
   projectTag.value ? `${projectTag.value.parent}//${projectTag.value.name}` : "",
 );
 const tasks = computed(() => (projectTag.value ? store.getTags(projectPath.value) : []));
+const projectNameError = computed(() =>
+  store.tagNameError("", projectName.value, projectTag.value?.uuid),
+);
+const taskNameError = computed(() => store.tagNameError(projectPath.value, taskName.value));
 
 const createProject = () => {
+  if (projectNameError.value) {
+    return;
+  }
   if (!projectTag.value) {
     projectTag.value = store.addTag("", projectName.value.trim());
   }
@@ -26,11 +33,10 @@ const createProject = () => {
 };
 
 const addTask = () => {
-  const name = taskName.value.trim();
-  if (!name) {
+  if (taskNameError.value) {
     return;
   }
-  store.addTag(projectPath.value, name);
+  store.addTag(projectPath.value, taskName.value.trim());
   taskName.value = "";
 };
 
@@ -66,9 +72,10 @@ const finish = () => {
             <input type="text" v-model="projectName" placeholder="e.g. Website Redesign" v-focus />
           </label>
         </div>
+        <p class="error" v-if="projectName && projectNameError">{{ projectNameError }}</p>
         <div class="modal-buttons">
           <button type="button" class="btn-secondary" @click="step = 1">Back</button>
-          <button type="submit" class="btn-primary" :disabled="!projectName.trim()">Next</button>
+          <button type="submit" class="btn-primary" :disabled="!!projectNameError">Next</button>
         </div>
       </form>
     </template>
@@ -77,8 +84,9 @@ const finish = () => {
       <p>Add a few tasks under "{{ projectTag?.name }}" - you can always add more later.</p>
       <form class="task-form" @submit.prevent="addTask">
         <input type="text" v-model="taskName" placeholder="e.g. Design" v-focus />
-        <button type="submit" class="btn-secondary" :disabled="!taskName.trim()">Add</button>
+        <button type="submit" class="btn-secondary" :disabled="!!taskNameError">Add</button>
       </form>
+      <p class="error" v-if="taskName && taskNameError">{{ taskNameError }}</p>
       <ul class="task-list">
         <li v-for="task in tasks" :key="task.uuid">
           <span>{{ task.name }}</span>
@@ -111,6 +119,11 @@ const finish = () => {
     font-size: 0.85rem;
     opacity: 0.8;
   }
+}
+
+.error {
+  color: var(--fht-error-color);
+  font-size: 0.85rem;
 }
 
 .task-form {

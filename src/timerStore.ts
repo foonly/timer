@@ -94,6 +94,24 @@ export const useTimerStore = defineStore(
 
     const pathOf = (tag: { parent: string; name: string }) => `${tag.parent}//${tag.name}`;
 
+    // Tags are identified by their `${parent}//${name}` path everywhere outside sync, so a name
+    // that's empty, contains the "//" separator, or collides with a sibling would make two tags
+    // (or a tag and its own child) indistinguishable. Returns "" when `name` is usable under
+    // `parent`; `ignoreUuid` excludes the tag being edited from the sibling-collision check.
+    const tagNameError = (parent: string, name: string, ignoreUuid?: string): string => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        return "Name is required.";
+      }
+      if (trimmed.includes("//")) {
+        return 'Name can\'t contain "//".';
+      }
+      if (getTags(parent).some((t) => t.name === trimmed && t.uuid !== ignoreUuid)) {
+        return "A tag with that name already exists here.";
+      }
+      return "";
+    };
+
     // Resolves a tag's own path into its uuid, for building sync-event payloads. `""` (root) has
     // no owning tag, so it maps to `null` rather than being looked up.
     const resolveTagUuid = (path: string): string | null => {
@@ -173,6 +191,11 @@ export const useTimerStore = defineStore(
           timer.id = newId + timer.id.slice(id.length);
         }
       }
+      // Collapse state is keyed by path too, so it has to follow the subtree or a rename would
+      // silently expand the tag (and any collapsed descendants).
+      collapsedTagIds.value = collapsedTagIds.value.map((c) =>
+        isSelfOrDescendant(c, id) ? newId + c.slice(id.length) : c,
+      );
     };
 
     // Shared by removeTag (local) and applyRemoteEvent's tag_removed handling - the actual
@@ -683,18 +706,22 @@ export const useTimerStore = defineStore(
       for (const timer of windowTimers.filter((t) => !t.positive)) {
         const { start, end } = clipToRange(timer);
         for (const r of records) {
-          if (isSelfOrDescendant(r.id, timer.id)) {
-            if (start >= r.start && start < r.end) {
-              // Timer overlaps the start.
-              if (end < r.end) {
-                // Timer is in the middle, split the record.
-                records.push({ start: end, end: r.end, id: r.id });
-              }
-              r.end = start;
-            } else if (end > r.start && end <= r.end) {
-              // Timer overlaps the end.
-              r.start = end;
-            }
+          if (!isSelfOrDescendant(r.id, timer.id) || end <= r.start || start >= r.end) {
+            continue;
+          }
+          if (start > r.start && end < r.end) {
+            // Pause is strictly inside the record, split the record.
+            records.push({ start: end, end: r.end, id: r.id });
+            r.end = start;
+          } else if (start > r.start) {
+            // Pause overlaps the record's end.
+            r.end = start;
+          } else if (end < r.end) {
+            // Pause overlaps the record's start.
+            r.start = end;
+          } else {
+            // Pause covers the whole record.
+            r.end = r.start;
           }
         }
       }
@@ -926,6 +953,7 @@ export const useTimerStore = defineStore(
       goToNextDay,
       goToToday,
       getTags,
+      tagNameError,
       addTag,
       updateTag,
       moveTag,

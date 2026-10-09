@@ -7,6 +7,7 @@ import {
   timerOverlapsRange,
   toDatetimeLocal,
   fromDatetimeLocal,
+  recordEditError,
 } from "../helpers";
 import ModalDialog from "./ModalDialog.vue";
 import StartEnd from "./StartEnd.vue";
@@ -43,16 +44,10 @@ const editingTimer = computed(() => store.timers.find((t) => t.uuid === editingU
 
 const editError = computed(() => {
   const timer = editingTimer.value;
-  if (!timer || timer.end === 0) {
+  if (!timer) {
     return "";
   }
-  if (!startInput.value || !endInput.value) {
-    return "Start and end are required.";
-  }
-  if (fromDatetimeLocal(endInput.value) <= fromDatetimeLocal(startInput.value)) {
-    return "End must be after start.";
-  }
-  return "";
+  return recordEditError(timer.end === 0, startInput.value, endInput.value, now.value);
 });
 
 const modalTitle = computed(() => {

@@ -1,27 +1,16 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { formatClockTime } from "../helpers";
 
 const props = defineProps<{ start: number; end: number }>();
-
-const startDate = computed(() => {
-  const date = new Date(props.start);
-
-  return date;
-});
-const endDate = computed(() => {
-  const date = new Date(props.end);
-
-  return date;
-});
 </script>
 
 <template>
   <div class="start-end">
-    <time class="start" :datetime="startDate.toISOString()">
-      {{ startDate.getHours() }}:{{ startDate.getMinutes() }}:{{ startDate.getSeconds() }}
+    <time class="start" :datetime="new Date(props.start).toISOString()">
+      {{ formatClockTime(props.start) }}
     </time>
-    <time class="end" v-if="props.end > 0" :datetime="endDate.toISOString()">
-      {{ endDate.getHours() }}:{{ endDate.getMinutes() }}:{{ endDate.getSeconds() }}
+    <time class="end" v-if="props.end > 0" :datetime="new Date(props.end).toISOString()">
+      {{ formatClockTime(props.end) }}
     </time>
   </div>
 </template>

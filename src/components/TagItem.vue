@@ -19,12 +19,14 @@ const store = useTimerStore();
 
 const props = defineProps<{ tag: fhtTag }>();
 
-const id = `${props.tag.parent}//${props.tag.name}`;
-const status = computed(() => store.getStatus(id));
-const collapsed = computed(() => store.isCollapsed(id));
+// Computed, not a plain const: ListTags keys this component by uuid, so a rename reuses the same
+// instance with the same (mutated-in-place) tag - a one-off const would keep the old path.
+const id = computed(() => `${props.tag.parent}//${props.tag.name}`);
+const status = computed(() => store.getStatus(id.value));
+const collapsed = computed(() => store.isCollapsed(id.value));
 
 const childSummary = computed(() => {
-  const children = store.getTags(id);
+  const children = store.getTags(id.value);
   if (!children.length) {
     return "";
   }
@@ -92,7 +94,7 @@ const childSummary = computed(() => {
     </template>
 
     <ModalDialog v-if="store.isModal('remove-tag', tag.parent, tag.name)" title="Are you sure?">
-      <p>Remove tag "{{ tag.name }}" and all it's sub-tags?</p>
+      <p>Remove tag "{{ tag.name }}" and all its sub-tags?</p>
       <div class="modal-buttons">
         <button class="btn-secondary" @click="store.modal = ''">Cancel</button>
         <button class="btn-destructive" @click="store.removeTag(`${tag.parent}//${tag.name}`)">
