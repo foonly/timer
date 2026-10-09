@@ -16,6 +16,7 @@ import (
 	"github.com/username/timer/backend/internal/auth"
 	"github.com/username/timer/backend/internal/db"
 	"github.com/username/timer/backend/internal/sync"
+	"github.com/username/timer/backend/migrations"
 )
 
 func main() {
@@ -43,8 +44,10 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := db.RunMigrations(pool); err != nil {
-		log.Printf("Migration warning: %v\n", err)
+	// Fatal: serving requests against a schema that's missing a migration would fail in
+	// confusing ways later, far from the actual cause.
+	if err := db.RunMigrations(context.Background(), pool, migrations.FS); err != nil {
+		log.Fatalf("Migrations failed: %v\n", err)
 	}
 
 	r := chi.NewRouter()
