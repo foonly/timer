@@ -48,8 +48,9 @@ function bootstrapSyncIfNeeded() {
   }
 
   for (const timer of timerStore.timers) {
-    const tagUuid = uuidForPath(timer.id);
-    if (!tagUuid) {
+    // "" is the root timer ("Pause all"), sent as a null tagUuid like startTimer does.
+    const tagUuid = timer.id === "" ? null : uuidForPath(timer.id);
+    if (tagUuid === undefined) {
       continue; // timer on a since-deleted tag - nothing left to attach it to server-side
     }
     syncStore.enqueueEvent({
@@ -68,6 +69,25 @@ function bootstrapSyncIfNeeded() {
         deviceId: syncStore.deviceId,
         timestamp: timer.end,
         payload: { uuid: timer.uuid, end: timer.end },
+      });
+    }
+    // timer_started carries no description, so send it as an edit. Its timestamp must be strictly
+    // after timer_started's (the receiver ignores an edit that isn't newer than the timer), which
+    // updatedAt alone doesn't guarantee for data from before updatedAt existed (see migrateUuids).
+    if (timer.description) {
+      syncStore.enqueueEvent({
+        id: crypto.randomUUID(),
+        type: "timer_updated",
+        entityId: timer.uuid,
+        deviceId: syncStore.deviceId,
+        timestamp: Math.max(timer.updatedAt, timer.start + 1),
+        payload: {
+          uuid: timer.uuid,
+          start: timer.start,
+          end: timer.end,
+          description: timer.description,
+          positive: timer.positive,
+        },
       });
     }
   }

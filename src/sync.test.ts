@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { useAuthStore } from "./authStore";
 import { useSyncStore } from "./syncStore";
 import { useTimerStore } from "./timerStore";
-import { pullNew } from "./syncService";
+import { pullNew, pushPending } from "./syncService";
 
 const jsonResponse = (status: number, body: unknown = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -173,5 +173,131 @@ describe("pullNew", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { events: [{ seq: 7 }], hasMore: false }));
     await pullNew();
     expect(useSyncStore().pullCursor).toBe(7);
+  });
+});
+
+describe("first-login bootstrap", () => {
+  const T = new Date(2026, 5, 15, 12, 0, 0).getTime();
+  const MIN = 60_000;
+  const comparable = (timers: ReturnType<typeof useTimerStore>["timers"]) =>
+    timers
+      .map(({ id, uuid, start, end, positive, description }) => ({
+        id,
+        uuid,
+        start,
+        end,
+        positive,
+        description,
+      }))
+      .sort((a, b) => a.uuid.localeCompare(b.uuid));
+
+  it("reproduces every timer on another device, including root pauses and descriptions", async () => {
+    const deviceA = useTimerStore();
+    deviceA.addTag("", "Work");
+    deviceA.addTag("//Work", "Design");
+    const base = { description: "", positive: true, end: 0 };
+    deviceA.timers = [
+      {
+        ...base,
+        id: "//Work//Design",
+        uuid: "t1",
+        start: T - 60 * MIN,
+        end: T - 30 * MIN,
+        updatedAt: T - 30 * MIN,
+      },
+      // Legacy record: described, but updatedAt === start (backfilled by migrateUuids).
+      {
+        ...base,
+        id: "//Work",
+        uuid: "t2",
+        start: T - 20 * MIN,
+        description: "Planning",
+        updatedAt: T - 20 * MIN,
+      },
+      // "Pause all" on the root.
+      {
+        ...base,
+        id: "",
+        uuid: "t3",
+        positive: false,
+        start: T - 50 * MIN,
+        end: T - 40 * MIN,
+        updatedAt: T - 40 * MIN,
+      },
+      // On a since-deleted tag - can't be attached server-side, so it's skipped.
+      {
+        ...base,
+        id: "//Gone",
+        uuid: "t4",
+        start: T - 10 * MIN,
+        end: T - 5 * MIN,
+        updatedAt: T - 5 * MIN,
+      },
+    ];
+    useSyncStore().pendingEvents = [];
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { token: "t" }));
+    await useAuthStore().login("a@example.com", "pw");
+    const events = [...useSyncStore().pendingEvents];
+    const expected = comparable(deviceA.timers.filter((t) => t.uuid !== "t4"));
+
+    setActivePinia(createPinia());
+    const deviceB = useTimerStore();
+    for (const event of events) {
+      deviceB.applyRemoteEvent(event);
+    }
+    expect(comparable(deviceB.timers)).toEqual(expected);
+    expect(deviceB.tags.map((t) => `${t.parent}//${t.name}`).sort()).toEqual([
+      "//Work",
+      "//Work//Design",
+    ]);
+  });
+});
+
+describe("remote timer edits", () => {
+  it("applies an edit even when the timer's creation is pulled long after the edit was made", () => {
+    const T = new Date(2026, 5, 15, 12, 0, 0).getTime();
+    vi.useFakeTimers();
+    // This device pulls an hour after both events happened on the other device.
+    vi.setSystemTime(T + 3_600_000);
+    const store = useTimerStore();
+    const envelope = { deviceId: "other", entityId: "t1" };
+    store.applyRemoteEvent({
+      ...envelope,
+      id: "e1",
+      type: "timer_started",
+      timestamp: T,
+      payload: { uuid: "t1", tagUuid: null, positive: true, start: T },
+    });
+    store.applyRemoteEvent({
+      ...envelope,
+      id: "e2",
+      type: "timer_updated",
+      timestamp: T + 5_000,
+      payload: { uuid: "t1", start: T, end: T + 60_000, description: "edited", positive: true },
+    });
+    expect(store.timers[0]).toMatchObject({ end: T + 60_000, description: "edited" });
+    vi.useRealTimers();
+  });
+});
+
+describe("pushPending", () => {
+  it("drains the whole backlog in one call, a chunk at a time", async () => {
+    useAuthStore().token = "t";
+    const sync = useSyncStore();
+    for (let i = 0; i < 450; i++) {
+      sync.enqueueEvent({
+        id: `e${i}`,
+        type: "tag_removed",
+        entityId: "x",
+        deviceId: "d",
+        timestamp: 1,
+        payload: { uuid: "x" },
+      });
+    }
+    fetchMock.mockImplementation(async () => jsonResponse(200, { accepted: 0 }));
+    await pushPending();
+    expect(sync.pendingEvents).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

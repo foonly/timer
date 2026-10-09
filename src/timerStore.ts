@@ -412,6 +412,10 @@ export const useTimerStore = defineStore(
             uuid: event.payload.uuid,
             positive: event.payload.positive,
             start: event.payload.start,
+            // The event's own time, not "now" (the schema default): timer_updated is
+            // last-write-wins against updatedAt, so stamping it with when this device happened to
+            // pull would make it silently ignore any edit made before then.
+            updatedAt: event.timestamp,
           });
           timers.value.push(timer);
           invalidateForTimer(timer);

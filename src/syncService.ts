@@ -12,13 +12,18 @@ const PULL_LIMIT = 500;
 let started = false;
 let syncing = false;
 
-async function pushPending(): Promise<void> {
+// Pushes every pending event, a chunk at a time - all in this cycle, so a big backlog (e.g. the
+// first-login bootstrap of a long history) doesn't trickle out one chunk per SYNC_INTERVAL_MS.
+export async function pushPending(): Promise<void> {
+  const syncStore = useSyncStore();
+  while (syncStore.pendingEvents.length > 0) {
+    await pushChunk();
+  }
+}
+
+async function pushChunk(): Promise<void> {
   const syncStore = useSyncStore();
   const authStore = useAuthStore();
-  if (syncStore.pendingEvents.length === 0) {
-    return;
-  }
-
   const chunk = syncStore.pendingEvents.slice(0, PUSH_CHUNK_SIZE);
   const res = await fetch("/api/sync/push", {
     method: "POST",
