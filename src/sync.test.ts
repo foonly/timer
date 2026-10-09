@@ -68,6 +68,13 @@ describe("login errors", () => {
     expect(auth.authError).toBe("Something went wrong - please try again.");
   });
 
+  it("maps a 429 to a rate-limit message", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(429));
+    const auth = useAuthStore();
+    await auth.login("a@example.com", "password");
+    expect(auth.authError).toBe("Too many attempts - please wait a few minutes and try again.");
+  });
+
   it("maps a 409 to the duplicate-account message", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(409));
     const auth = useAuthStore();

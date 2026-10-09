@@ -271,3 +271,44 @@ func TestExistingSessionsSurviveTokenHashingMigration(t *testing.T) {
 		t.Fatalf("pre-migration token resolved to (%v, %v), want (%v, true)", got, ok, userID)
 	}
 }
+
+func TestLoginFailuresArePerEmailLimited(t *testing.T) {
+	h, _ := setupHandler(t)
+	if rec := signup(h, `{"email":"a@example.com","password":"password"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("signup: status %d: %s", rec.Code, rec.Body)
+	}
+
+	for i := range maxFailuresPerEmail {
+		// Case variants count against the same account.
+		email := "a@example.com"
+		if i%2 == 1 {
+			email = "A@Example.com"
+		}
+		if rec := login(h, `{"email":"`+email+`","password":"wrong-password"}`); rec.Code != http.StatusUnauthorized {
+			t.Fatalf("failure %d: status %d, want 401", i+1, rec.Code)
+		}
+	}
+	// Locked out now - even with the right password.
+	if rec := login(h, `{"email":"a@example.com","password":"password"}`); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status %d, want 429", rec.Code)
+	}
+	// Other accounts are unaffected.
+	if rec := signup(h, `{"email":"b@example.com","password":"password"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("signup b: status %d", rec.Code)
+	}
+	if rec := login(h, `{"email":"b@example.com","password":"password"}`); rec.Code != http.StatusOK {
+		t.Fatalf("login b: status %d, want 200", rec.Code)
+	}
+}
+
+// Unknown emails hit the same limit as wrong passwords, so the response doesn't reveal which
+// emails are registered.
+func TestUnknownEmailFailuresAreLimitedToo(t *testing.T) {
+	h, _ := setupHandler(t)
+	for range maxFailuresPerEmail {
+		login(h, `{"email":"nobody@example.com","password":"password"}`)
+	}
+	if rec := login(h, `{"email":"nobody@example.com","password":"password"}`); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status %d, want 429", rec.Code)
+	}
+}

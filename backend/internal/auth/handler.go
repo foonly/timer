@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -28,10 +30,43 @@ const sessionDuration = 90 * 24 * time.Hour
 
 type Handler struct {
 	DB *pgxpool.Pool
+
+	// Brute-force protection: ipAttempts caps all login/signup attempts from one client, slowing
+	// broad guessing; emailFailures caps failed logins against one account, slowing a targeted
+	// password guess even when spread across many addresses.
+	ipAttempts    *attemptLimiter
+	emailFailures *attemptLimiter
 }
 
+const (
+	attemptWindow       = 15 * time.Minute
+	maxAttemptsPerIP    = 20
+	maxFailuresPerEmail = 5
+)
+
 func NewHandler(db *pgxpool.Pool) *Handler {
-	return &Handler{DB: db}
+	return &Handler{
+		DB:            db,
+		ipAttempts:    newAttemptLimiter(maxAttemptsPerIP, attemptWindow),
+		emailFailures: newAttemptLimiter(maxFailuresPerEmail, attemptWindow),
+	}
+}
+
+func tooManyAttempts(w http.ResponseWriter, wait time.Duration) {
+	w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(wait.Seconds()))))
+	http.Error(w, "Too many attempts, please try again later", http.StatusTooManyRequests)
+}
+
+// checkIPAttempt rejects the request if its client has used up its attempts, and otherwise counts
+// this one. Returns false if the request was rejected.
+func (h *Handler) checkIPAttempt(w http.ResponseWriter, r *http.Request) bool {
+	ip := clientIP(r)
+	if wait := h.ipAttempts.retryAfter(ip); wait > 0 {
+		tooManyAttempts(w, wait)
+		return false
+	}
+	h.ipAttempts.record(ip)
+	return true
 }
 
 type credentialsRequest struct {
@@ -45,6 +80,9 @@ type sessionResponse struct {
 }
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
+	if !h.checkIPAttempt(w, r) {
+		return
+	}
 	var req credentialsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -112,20 +150,36 @@ func validateSignup(req credentialsRequest) string {
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	if !h.checkIPAttempt(w, r) {
+		return
+	}
 	var req credentialsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	email := strings.TrimSpace(req.Email)
+	emailKey := strings.ToLower(email)
+	if wait := h.emailFailures.retryAfter(emailKey); wait > 0 {
+		tooManyAttempts(w, wait)
+		return
+	}
+	// Unknown emails count as failures too, so the limit behaves the same either way and doesn't
+	// reveal whether an email is registered.
+	invalidCredentials := func() {
+		h.emailFailures.record(emailKey)
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	}
+
 	var userID uuid.UUID
 	var hash string
 	err := h.DB.QueryRow(r.Context(),
-		"SELECT id, password_hash FROM users WHERE email = lower($1)", strings.TrimSpace(req.Email)).
+		"SELECT id, password_hash FROM users WHERE email = lower($1)", email).
 		Scan(&userID, &hash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Same generic message as a bad password, to avoid leaking whether an email is registered.
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		invalidCredentials()
 		return
 	}
 	if err != nil {
@@ -135,7 +189,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		invalidCredentials()
 		return
 	}
 

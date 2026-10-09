@@ -82,6 +82,9 @@ function errorMessageFor(status: number): string {
   if (status === 409) {
     return "An account with that email already exists.";
   }
+  if (status === 429) {
+    return "Too many attempts - please wait a few minutes and try again.";
+  }
   return "Something went wrong - please try again.";
 }
 
