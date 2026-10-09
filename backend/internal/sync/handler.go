@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/username/timer/backend/internal/httpx"
 )
 
 const (
@@ -54,8 +56,7 @@ func (h *Handler) Push(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req pushRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
 

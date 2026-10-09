@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/username/timer/backend/internal/httpx"
 	"github.com/username/timer/backend/internal/models"
 )
 
@@ -84,8 +85,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req credentialsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
 	req.Email = strings.TrimSpace(req.Email)
@@ -154,8 +154,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req credentialsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !httpx.DecodeJSON(w, r, &req) {
 		return
 	}
 
