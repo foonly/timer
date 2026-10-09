@@ -1,4 +1,4 @@
-package sync
+package syncapi
 
 import (
 	"bytes"
@@ -13,6 +13,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/foonly/timer/backend/internal/auth"
 )
 
 // These are integration tests against a real Postgres: set TEST_DATABASE_URL to a disposable
@@ -68,7 +70,7 @@ func tagRemovedEvent() incomingEvent {
 func push(h *Handler, userID uuid.UUID, events ...incomingEvent) *httptest.ResponseRecorder {
 	body, _ := json.Marshal(pushRequest{Events: events})
 	req := httptest.NewRequest(http.MethodPost, "/api/sync/push", bytes.NewReader(body))
-	req = req.WithContext(context.WithValue(req.Context(), userIDKey, userID))
+	req = req.WithContext(auth.WithUserID(req.Context(), userID))
 	rec := httptest.NewRecorder()
 	h.Push(rec, req)
 	return rec
@@ -77,7 +79,7 @@ func push(h *Handler, userID uuid.UUID, events ...incomingEvent) *httptest.Respo
 func pull(t *testing.T, h *Handler, userID uuid.UUID, since int64) pullResponse {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/sync/pull?since=%d", since), nil)
-	req = req.WithContext(context.WithValue(req.Context(), userIDKey, userID))
+	req = req.WithContext(auth.WithUserID(req.Context(), userID))
 	rec := httptest.NewRecorder()
 	h.Pull(rec, req)
 	if rec.Code != http.StatusOK {

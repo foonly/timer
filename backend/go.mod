@@ -1,4 +1,4 @@
-module github.com/username/timer/backend
+module github.com/foonly/timer/backend
 
 go 1.25.0
 

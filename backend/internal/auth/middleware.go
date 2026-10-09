@@ -16,6 +16,18 @@ import (
 // convention already used elsewhere in this author's Go backends.
 const userIDKey = "user_id"
 
+// WithUserID returns ctx carrying userID as the authenticated user - what SessionMiddleware does
+// for a valid session. Exported for other packages' tests.
+func WithUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
+
+// UserIDFromContext returns the authenticated user SessionMiddleware attached to ctx, if any.
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(userIDKey).(uuid.UUID)
+	return id, ok
+}
+
 // sessionRefreshThrottle bounds how often an active session's expiry is
 // extended, so a busy device doesn't trigger a sessions UPDATE on every request.
 const sessionRefreshThrottle = 1 * time.Hour
@@ -77,8 +89,7 @@ func SessionMiddleware(db *pgxpool.Pool) func(http.Handler) http.Handler {
 					now, newExpiresAt, tokenHash)
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, userID)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r.WithContext(WithUserID(r.Context(), userID)))
 		})
 	}
 }
@@ -87,7 +98,7 @@ func SessionMiddleware(db *pgxpool.Pool) func(http.Handler) http.Handler {
 // didn't attach a user_id to.
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Context().Value(userIDKey) == nil {
+		if _, ok := UserIDFromContext(r.Context()); !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

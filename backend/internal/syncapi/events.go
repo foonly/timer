@@ -1,4 +1,4 @@
-package sync
+package syncapi
 
 import (
 	"encoding/json"

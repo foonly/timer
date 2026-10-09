@@ -20,8 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/username/timer/backend/internal/httpx"
-	"github.com/username/timer/backend/internal/models"
+	"github.com/foonly/timer/backend/internal/httpx"
+	"github.com/foonly/timer/backend/internal/models"
 )
 
 // sessionDuration is intentionally long ("long-lasting login"): a session is
@@ -203,7 +203,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDKey).(uuid.UUID)
+	userID, ok := UserIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

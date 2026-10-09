@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/username/timer/backend/migrations"
+	"github.com/foonly/timer/backend/migrations"
 )
 
 // Integration tests against a real Postgres - set TEST_DATABASE_URL to a disposable database (see
-// internal/sync/handler_test.go). Each test runs in its own fresh schema, so they don't interfere
+// internal/syncapi/handler_test.go). Each test runs in its own fresh schema, so they don't interfere
 // with each other or with other packages' tests running in parallel. (The migration advisory lock
 // is database-wide, so concurrent runs in different schemas just wait for each other.)
 func setupPool(t *testing.T) *pgxpool.Pool {

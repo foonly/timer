@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/username/timer/backend/internal/db"
-	"github.com/username/timer/backend/migrations"
+	"github.com/foonly/timer/backend/internal/db"
+	"github.com/foonly/timer/backend/migrations"
 )
 
 func TestValidateSignup(t *testing.T) {
@@ -45,7 +45,7 @@ func TestValidateSignup(t *testing.T) {
 }
 
 // Integration tests against a real Postgres - set TEST_DATABASE_URL to a disposable database (see
-// internal/sync/handler_test.go). Each test gets its own fresh, fully migrated schema.
+// internal/syncapi/handler_test.go). Each test gets its own fresh, fully migrated schema.
 func setupHandler(t *testing.T) (*Handler, *pgxpool.Pool) {
 	t.Helper()
 	pool := setupSchema(t)
@@ -186,7 +186,7 @@ func authenticatedUser(pool *pgxpool.Pool, token string) (uuid.UUID, bool) {
 	var userID uuid.UUID
 	var ok bool
 	handler := SessionMiddleware(pool)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, ok = r.Context().Value(userIDKey).(uuid.UUID)
+		userID, ok = UserIDFromContext(r.Context())
 	}))
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)

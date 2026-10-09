@@ -17,15 +17,15 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/username/timer/backend/internal/auth"
-	"github.com/username/timer/backend/internal/db"
-	"github.com/username/timer/backend/internal/sync"
-	"github.com/username/timer/backend/migrations"
+	"github.com/foonly/timer/backend/internal/auth"
+	"github.com/foonly/timer/backend/internal/db"
+	"github.com/foonly/timer/backend/internal/syncapi"
+	"github.com/foonly/timer/backend/migrations"
 )
 
 const (
 	// Request body limits. Credentials are tiny; a push is at most 500 events (see
-	// sync.maxPushBatch), and the client sends 200 at a time, so 4 MiB leaves room for long
+	// syncapi.maxPushBatch), and the client sends 200 at a time, so 4 MiB leaves room for long
 	// timer descriptions without letting one request buffer unbounded memory.
 	maxAuthBodyBytes = 64 << 10
 	maxPushBodyBytes = 4 << 20
@@ -120,7 +120,7 @@ func newRouter(pool *pgxpool.Pool) http.Handler {
 	r.Use(auth.SessionMiddleware(pool))
 
 	authHandler := auth.NewHandler(pool)
-	syncHandler := sync.NewHandler(pool)
+	syncHandler := syncapi.NewHandler(pool)
 	authBody := middleware.RequestSize(maxAuthBodyBytes)
 
 	r.Route("/api", func(r chi.Router) {

@@ -1,4 +1,4 @@
-package sync
+package syncapi
 
 import (
 	"encoding/binary"
@@ -11,7 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/username/timer/backend/internal/httpx"
+	"github.com/foonly/timer/backend/internal/auth"
+	"github.com/foonly/timer/backend/internal/httpx"
 )
 
 const (
@@ -20,21 +21,12 @@ const (
 	maxPullLimit     = 2000
 )
 
-// userIDKey mirrors the auth package's context key - see the note there on
-// why it's a plain string rather than a typed key.
-const userIDKey = "user_id"
-
 type Handler struct {
 	DB *pgxpool.Pool
 }
 
 func NewHandler(db *pgxpool.Pool) *Handler {
 	return &Handler{DB: db}
-}
-
-func userIDFromContext(r *http.Request) (uuid.UUID, bool) {
-	id, ok := r.Context().Value(userIDKey).(uuid.UUID)
-	return id, ok
 }
 
 type pushRequest struct {
@@ -49,7 +41,7 @@ type pushResponse struct {
 // retried push (e.g. after a dropped response) can't create duplicates.
 // user_id always comes from the authenticated session, never from the body.
 func (h *Handler) Push(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r)
+	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -148,7 +140,7 @@ type pullResponse struct {
 // idempotently by entity id, which it already needs for the general
 // multi-device merge case, so re-seeing its own events here is a harmless no-op.
 func (h *Handler) Pull(w http.ResponseWriter, r *http.Request) {
-	userID, ok := userIDFromContext(r)
+	userID, ok := auth.UserIDFromContext(r.Context())
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
