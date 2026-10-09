@@ -3,8 +3,8 @@ import { z } from "zod";
 // One immutable, timestamped record per state mutation (add/rename/remove a tag, start/stop a
 // timer), keyed by a client-generated `id` (the idempotency key for push) and referencing
 // tags/timers by their stable `uuid` rather than the mutable path string used for display/tree
-// logic. This is the wire format pushed to and pulled from the backend - see
-// /home/niklas/.claude/plans/sleepy-juggling-token.md for the full protocol.
+// logic. This is the wire format pushed to and pulled from the backend (see
+// backend/internal/syncapi).
 
 const envelope = z.object({
   id: z.string(),
@@ -97,4 +97,3 @@ export type SyncEventType = SyncEvent["type"];
 // The shape a pulled event arrives in - the wire event plus the server-assigned monotonic cursor
 // position. Never trust `seq` on anything the client itself constructs (see syncService.ts).
 export const pulledSyncEventSchema = syncEventSchema.and(z.object({ seq: z.number() }));
-export type PulledSyncEvent = z.infer<typeof pulledSyncEventSchema>;

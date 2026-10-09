@@ -15,14 +15,13 @@ export const tagSchema = z.object({
 });
 export type fhtTag = z.infer<typeof tagSchema>;
 
-export const timerDataSchema = z.object({
+const timerDataSchema = z.object({
   description: z.string().default(""),
   positive: z.boolean().default(true),
   start: z.number(),
   end: z.number().default(0),
   updatedAt: z.number().default(() => Date.now()),
 });
-export type simpleTimer = z.infer<typeof timerDataSchema>;
 
 export const timerSchema = timerDataSchema.extend({
   id: z.string(),

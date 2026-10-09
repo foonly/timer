@@ -11,6 +11,10 @@ export const statusLabels: Record<timerStatus, string> = {
   "idle": "Stopped",
 };
 
+// A tag's id: its parent's id plus its own name. Root-level tags have parent "", so their id is
+// "//name".
+export const pathOf = (tag: { parent: string; name: string }) => `${tag.parent}//${tag.name}`;
+
 export const tagName = (id: string) => {
   return id.split("//").at(-1);
 };
@@ -26,8 +30,8 @@ export function isSelfOrDescendant(id: string, ancestor: string): boolean {
 // a nested id) - used to invalidate every cached aggregate that a given leaf timer contributes to,
 // since getTimeInRange(id, ...) sums over `id` and all of its descendants.
 //
-// A root-level tag's id is "//name" (pathOf: `${parent}//${name}`, and a root-level tag's parent
-// is "" - see timerStore.ts), so id.split("//") always starts with a leading "" segment. Prefixes
+// A root-level tag's id is "//name" (see pathOf), so id.split("//") always starts with a leading
+// "" segment. Prefixes
 // are rebuilt by cumulatively re-joining with "//" from that leading segment, rather than by
 // filtering it out, so each rebuilt ancestor id exactly matches the real id strings used
 // everywhere else (isSelfOrDescendant, getDayAggregate's cache keys, ...).
@@ -88,7 +92,7 @@ export function getDayStart(time = Date.now(), offset = DAY_CUTOFF_HOUR) {
 // getTimeFromDays both count from this exact instant so they stay exact inverses of each other.
 const dayZeroBoundary = (offset: number) => getDayStart(new Date(2024, 0, 1).getTime(), offset);
 
-export function getDayNumber(offset = DAY_CUTOFF_HOUR, time = Date.now()) {
+export function getDayNumber(time = Date.now(), offset = DAY_CUTOFF_HOUR) {
   // A day isn't always exactly 24h across a DST transition, so this ms-based diff drifts by
   // about an hour per transition it spans - fine, Math.round still lands on the right day count
   // as long as that drift stays under 12h (true for any realistic time range here).

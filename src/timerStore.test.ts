@@ -3,7 +3,6 @@ import { createPinia, setActivePinia } from "pinia";
 import { useTimerStore } from "./timerStore";
 import { now, dayStarts } from "./clock";
 import {
-  DAY_CUTOFF_HOUR,
   MS_PER_DAY,
   OLD_DAY_CACHE_THRESHOLD_DAYS,
   getDayNumber,
@@ -21,7 +20,7 @@ import type { fhtTimer } from "./types";
 const FIXED_NOW = new Date(2026, 5, 15, 12, 0, 0, 0).getTime();
 
 const pathOf = (tag: { parent: string; name: string }) => `${tag.parent}//${tag.name}`;
-const todayDayNum = () => getDayNumber(DAY_CUTOFF_HOUR, now.value);
+const todayDayNum = () => getDayNumber(now.value);
 
 let uuidCounter = 0;
 function makeTimer(overrides: Partial<fhtTimer> & { id: string; start: number }): fhtTimer {
@@ -450,5 +449,34 @@ describe("tagNameError", () => {
     expect(store.tagNameError("", "Home")).toBe("");
     expect(store.tagNameError("//Work", "Work")).toBe("");
     expect(store.tagNameError("", "Work", work.uuid)).toBe("");
+  });
+});
+
+describe("report order", () => {
+  it("orders siblings by earliest activity in their subtree, children right after their parent", () => {
+    const store = useTimerStore();
+    store.addTag("", "A");
+    store.addTag("", "B");
+    store.addTag("//A", "A1");
+    store.addTag("//A", "A2");
+    const MIN = 60_000;
+    const at = (id: string, startMin: number, endMin: number) =>
+      makeTimer({ id, start: FIXED_NOW - startMin * MIN, end: FIXED_NOW - endMin * MIN });
+    store.timers = [
+      at("//B", 120, 100),
+      // A's own timer starts after B's, but its child A2 started earliest of all.
+      at("//A", 90, 80),
+      at("//A//A2", 150, 140),
+      at("//A//A1", 60, 50),
+      // On a since-deleted tag, between A and B by start time.
+      at("//Gone", 130, 125),
+    ];
+    expect(store.reportEntries.map((e) => e.id)).toEqual([
+      "//A",
+      "//A//A2",
+      "//A//A1",
+      "//Gone",
+      "//B",
+    ]);
   });
 });

@@ -7,6 +7,7 @@ import Resume from "../assets/resume.svg";
 import Stop from "../assets/stop.svg";
 import Pause from "../assets/pause.svg";
 import { useTimerStore } from "../timerStore";
+import { pathOf } from "../helpers";
 import ModalDialog from "./ModalDialog.vue";
 import TimeDisplay from "./TimeDisplay.vue";
 import EditTag from "./EditTag.vue";
@@ -21,7 +22,7 @@ const props = defineProps<{ tag: fhtTag }>();
 
 // Computed, not a plain const: ListTags keys this component by uuid, so a rename reuses the same
 // instance with the same (mutated-in-place) tag - a one-off const would keep the old path.
-const id = computed(() => `${props.tag.parent}//${props.tag.name}`);
+const id = computed(() => pathOf(props.tag));
 const status = computed(() => store.getStatus(id.value));
 const collapsed = computed(() => store.isCollapsed(id.value));
 
@@ -96,10 +97,8 @@ const childSummary = computed(() => {
     <ModalDialog v-if="store.isModal('remove-tag', tag.parent, tag.name)" title="Are you sure?">
       <p>Remove tag "{{ tag.name }}" and all its sub-tags?</p>
       <div class="modal-buttons">
-        <button class="btn-secondary" @click="store.modal = ''">Cancel</button>
-        <button class="btn-destructive" @click="store.removeTag(`${tag.parent}//${tag.name}`)">
-          Remove
-        </button>
+        <button class="btn-secondary" @click="store.closeModal()">Cancel</button>
+        <button class="btn-destructive" @click="store.removeTag(id)">Remove</button>
       </div>
     </ModalDialog>
     <EditTag

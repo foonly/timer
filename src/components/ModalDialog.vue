@@ -60,7 +60,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="modal-background" @click="store.modal = ''">
+  <div class="modal-background" @click="store.closeModal()">
     <div
       class="modal"
       ref="modalRef"

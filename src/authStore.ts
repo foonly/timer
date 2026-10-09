@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
+import { pathOf } from "./helpers";
 import { useSyncStore } from "./syncStore";
 import { useTimerStore } from "./timerStore";
 
@@ -16,8 +17,7 @@ function bootstrapSyncIfNeeded() {
   }
   const timerStore = useTimerStore();
 
-  const uuidForPath = (path: string) =>
-    timerStore.tags.find((t) => `${t.parent}//${t.name}` === path)?.uuid;
+  const uuidForPath = (path: string) => timerStore.tags.find((t) => pathOf(t) === path)?.uuid;
 
   // Parent-before-child, so a child's tag_added never references a parentUuid the other side
   // hasn't seen yet.
@@ -25,25 +25,18 @@ function bootstrapSyncIfNeeded() {
   const visit = (parentPath: string) => {
     for (const tag of timerStore.getTags(parentPath)) {
       order.push(tag);
-      visit(`${tag.parent}//${tag.name}`);
+      visit(pathOf(tag));
     }
   };
   visit("");
 
   for (const tag of order) {
-    syncStore.enqueueEvent({
-      id: crypto.randomUUID(),
-      type: "tag_added",
-      entityId: tag.uuid,
-      deviceId: syncStore.deviceId,
-      timestamp: tag.updatedAt,
-      payload: {
-        uuid: tag.uuid,
-        parentUuid: tag.parent === "" ? null : (uuidForPath(tag.parent) ?? null),
-        name: tag.name,
-        description: tag.description,
-        order: tag.order,
-      },
+    syncStore.emitEvent("tag_added", tag.uuid, tag.updatedAt, {
+      uuid: tag.uuid,
+      parentUuid: tag.parent === "" ? null : (uuidForPath(tag.parent) ?? null),
+      name: tag.name,
+      description: tag.description,
+      order: tag.order,
     });
   }
 
@@ -53,41 +46,28 @@ function bootstrapSyncIfNeeded() {
     if (tagUuid === undefined) {
       continue; // timer on a since-deleted tag - nothing left to attach it to server-side
     }
-    syncStore.enqueueEvent({
-      id: crypto.randomUUID(),
-      type: "timer_started",
-      entityId: timer.uuid,
-      deviceId: syncStore.deviceId,
-      timestamp: timer.start,
-      payload: { uuid: timer.uuid, tagUuid, positive: timer.positive, start: timer.start },
+    syncStore.emitEvent("timer_started", timer.uuid, timer.start, {
+      uuid: timer.uuid,
+      tagUuid,
+      positive: timer.positive,
+      start: timer.start,
     });
     if (timer.end !== 0) {
-      syncStore.enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "timer_stopped",
-        entityId: timer.uuid,
-        deviceId: syncStore.deviceId,
-        timestamp: timer.end,
-        payload: { uuid: timer.uuid, end: timer.end },
+      syncStore.emitEvent("timer_stopped", timer.uuid, timer.end, {
+        uuid: timer.uuid,
+        end: timer.end,
       });
     }
     // timer_started carries no description, so send it as an edit. Its timestamp must be strictly
     // after timer_started's (the receiver ignores an edit that isn't newer than the timer), which
     // updatedAt alone doesn't guarantee for data from before updatedAt existed (see migrateUuids).
     if (timer.description) {
-      syncStore.enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "timer_updated",
-        entityId: timer.uuid,
-        deviceId: syncStore.deviceId,
-        timestamp: Math.max(timer.updatedAt, timer.start + 1),
-        payload: {
-          uuid: timer.uuid,
-          start: timer.start,
-          end: timer.end,
-          description: timer.description,
-          positive: timer.positive,
-        },
+      syncStore.emitEvent("timer_updated", timer.uuid, Math.max(timer.updatedAt, timer.start + 1), {
+        uuid: timer.uuid,
+        start: timer.start,
+        end: timer.end,
+        description: timer.description,
+        positive: timer.positive,
       });
     }
   }

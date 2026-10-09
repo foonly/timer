@@ -23,22 +23,24 @@ app.directive("focus", {
 });
 
 app.use(pinia);
+
+// Before mounting, so no component ever renders (or acts on) tags/timers that are missing the
+// uuid/updatedAt/order fields migrateUuids backfills.
+const timerStore = useTimerStore();
+timerStore.migrateUuids();
+if (timerStore.tags.length === 0 && !timerStore.wizardPromptDismissed) {
+  timerStore.openModal("setup-wizard-prompt");
+}
+
 app.mount("#app");
 
 startClock();
 initDarkLightMode();
 
-useTimerStore().migrateUuids();
-
-const timerStore = useTimerStore();
-if (timerStore.tags.length === 0 && !timerStore.wizardPromptDismissed) {
-  timerStore.openModal("setup-wizard-prompt");
-}
-
 void useAuthStore().checkSession();
 startSyncEngine();
 
-const redundantTimers = findRedundantTimers(useTimerStore().timers);
+const redundantTimers = findRedundantTimers(timerStore.timers);
 if (redundantTimers.length > 0) {
   console.warn(
     `Sanity check: found ${redundantTimers.length} redundant timer record(s) - fully covered ` +

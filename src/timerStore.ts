@@ -3,13 +3,13 @@ import { computed, ref } from "vue";
 import { tagSchema, timerSchema, type fhtTag, type fhtTimer, type timerStatus } from "./types";
 import {
   modalName,
+  pathOf,
   getDayNumber,
   getTimeFromDays,
   formatDayLabel,
   isSelfOrDescendant,
   ancestorChainIds,
   timerOverlapsRange,
-  DAY_CUTOFF_HOUR,
   MS_PER_DAY,
   OLD_DAY_CACHE_THRESHOLD_DAYS,
 } from "./helpers";
@@ -23,12 +23,12 @@ import type { DayTagAggregate } from "./dayTagAggregateCache";
 export const useTimerStore = defineStore(
   "timer",
   () => {
-    const tags = ref(<fhtTag[]>[]);
-    const timers = ref(<fhtTimer[]>[]);
+    const tags = ref<fhtTag[]>([]);
+    const timers = ref<fhtTimer[]>([]);
     const modal = ref("");
     // Which tags are shown collapsed, by tag id. Local-only UI state - deliberately never wired
     // into a sync event, so it stays device-specific instead of following the tag across devices.
-    const collapsedTagIds = ref(<string[]>[]);
+    const collapsedTagIds = ref<string[]>([]);
     // null means "today" and tracks the real day as it advances; a number pins the report to
     // that specific day so browsing history doesn't get yanked forward by a real day rollover.
     const viewedDayNumber = ref<number | null>(null);
@@ -42,7 +42,7 @@ export const useTimerStore = defineStore(
       return dayStarts.value + MS_PER_DAY;
     });
 
-    const todayDayNumber = computed(() => getDayNumber(DAY_CUTOFF_HOUR, now.value));
+    const todayDayNumber = computed(() => getDayNumber(now.value));
     const reportDayNumber = computed(() => viewedDayNumber.value ?? todayDayNumber.value);
     const reportDayStart = computed(() => getTimeFromDays(reportDayNumber.value));
     const reportDayEnd = computed(() => reportDayStart.value + MS_PER_DAY);
@@ -64,8 +64,8 @@ export const useTimerStore = defineStore(
     // descendants, so a leaf timer's change can affect an ancestor's cached total too.
     const invalidateForTimer = (timer: { id: string; start: number; end: number }) => {
       const effectiveEnd = timer.end > 0 ? timer.end : now.value;
-      const firstDay = getDayNumber(DAY_CUTOFF_HOUR, timer.start);
-      const lastDay = getDayNumber(DAY_CUTOFF_HOUR, Math.max(timer.start, effectiveEnd - 1));
+      const firstDay = getDayNumber(timer.start);
+      const lastDay = getDayNumber(Math.max(timer.start, effectiveEnd - 1));
       for (let day = firstDay; day <= lastDay; day++) {
         for (const ancestorId of ancestorChainIds(timer.id)) {
           invalidateDay(day, ancestorId);
@@ -91,8 +91,6 @@ export const useTimerStore = defineStore(
       const siblings = getTags(parent);
       return siblings.length ? siblings[siblings.length - 1].order + ORDER_GAP : 0;
     };
-
-    const pathOf = (tag: { parent: string; name: string }) => `${tag.parent}//${tag.name}`;
 
     // Tags are identified by their `${parent}//${name}` path everywhere outside sync, so a name
     // that's empty, contains the "//" separator, or collides with a sibling would make two tags
@@ -157,7 +155,7 @@ export const useTimerStore = defineStore(
       timestamp: number,
     ) => {
       const id = pathOf(tag);
-      const newId = `${fields.parent}//${fields.name}`;
+      const newId = pathOf(fields);
       tag.name = fields.name;
       tag.description = fields.description;
       tag.parent = fields.parent;
@@ -217,13 +215,12 @@ export const useTimerStore = defineStore(
       const updatedAt = Date.now();
       const order = nextOrderAfter(parent);
       const tag = insertTag(uuid, parent, name, description, updatedAt, order);
-      useSyncStore().enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "tag_added",
-        entityId: uuid,
-        deviceId: useSyncStore().deviceId,
-        timestamp: updatedAt,
-        payload: { uuid, parentUuid: resolveTagUuid(parent), name, description, order },
+      useSyncStore().emitEvent("tag_added", uuid, updatedAt, {
+        uuid,
+        parentUuid: resolveTagUuid(parent),
+        name,
+        description,
+        order,
       });
       return tag;
     };
@@ -238,19 +235,12 @@ export const useTimerStore = defineStore(
       }
       const timestamp = Date.now();
       renameTagInPlace(tag, fields, timestamp);
-      useSyncStore().enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "tag_updated",
-        entityId: tag.uuid,
-        deviceId: useSyncStore().deviceId,
-        timestamp,
-        payload: {
-          uuid: tag.uuid,
-          parentUuid: resolveTagUuid(fields.parent),
-          name: fields.name,
-          description: fields.description,
-          order: fields.order,
-        },
+      useSyncStore().emitEvent("tag_updated", tag.uuid, timestamp, {
+        uuid: tag.uuid,
+        parentUuid: resolveTagUuid(fields.parent),
+        name: fields.name,
+        description: fields.description,
+        order: fields.order,
       });
     };
 
@@ -291,13 +281,8 @@ export const useTimerStore = defineStore(
       removeTagInternal(remove, stoppedAt);
       modal.value = "";
       if (removedTag) {
-        useSyncStore().enqueueEvent({
-          id: crypto.randomUUID(),
-          type: "tag_removed",
-          entityId: removedTag.uuid,
-          deviceId: useSyncStore().deviceId,
-          timestamp: stoppedAt,
-          payload: { uuid: removedTag.uuid },
+        useSyncStore().emitEvent("tag_removed", removedTag.uuid, stoppedAt, {
+          uuid: removedTag.uuid,
         });
       }
     };
@@ -482,7 +467,7 @@ export const useTimerStore = defineStore(
         name = `${randomTagName()} ${attempt++}`;
       }
       addTag(parent, name);
-      startTimer(`${parent}//${name}`);
+      startTimer(pathOf({ parent, name }));
     };
     const isCollapsed = (id: string) => collapsedTagIds.value.includes(id);
     const toggleCollapsed = (id: string) => {
@@ -517,14 +502,7 @@ export const useTimerStore = defineStore(
         console.warn(`Sync: could not resolve tag for timer "${id}" - skipping sync event`);
         return;
       }
-      useSyncStore().enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "timer_started",
-        entityId: uuid,
-        deviceId: useSyncStore().deviceId,
-        timestamp: start,
-        payload: { uuid, tagUuid, positive, start },
-      });
+      useSyncStore().emitEvent("timer_started", uuid, start, { uuid, tagUuid, positive, start });
     };
     const stopTimer = (id: string, positive: boolean | undefined = undefined) => {
       const stoppedAt = Date.now();
@@ -535,13 +513,9 @@ export const useTimerStore = defineStore(
           (positive === undefined || timer.positive === positive)
         ) {
           timer.end = stoppedAt;
-          useSyncStore().enqueueEvent({
-            id: crypto.randomUUID(),
-            type: "timer_stopped",
-            entityId: timer.uuid,
-            deviceId: useSyncStore().deviceId,
-            timestamp: stoppedAt,
-            payload: { uuid: timer.uuid, end: stoppedAt },
+          useSyncStore().emitEvent("timer_stopped", timer.uuid, stoppedAt, {
+            uuid: timer.uuid,
+            end: stoppedAt,
           });
         }
       }
@@ -570,13 +544,9 @@ export const useTimerStore = defineStore(
       for (const timer of timers.value) {
         if (!timer.positive && timer.end === 0 && isSelfOrDescendant(id, timer.id)) {
           timer.end = stoppedAt;
-          useSyncStore().enqueueEvent({
-            id: crypto.randomUUID(),
-            type: "timer_stopped",
-            entityId: timer.uuid,
-            deviceId: useSyncStore().deviceId,
-            timestamp: stoppedAt,
-            payload: { uuid: timer.uuid, end: stoppedAt },
+          useSyncStore().emitEvent("timer_stopped", timer.uuid, stoppedAt, {
+            uuid: timer.uuid,
+            end: stoppedAt,
           });
         }
       }
@@ -597,19 +567,12 @@ export const useTimerStore = defineStore(
       timer.positive = fields.positive;
       timer.updatedAt = timestamp;
       invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
-      useSyncStore().enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "timer_updated",
-        entityId: timer.uuid,
-        deviceId: useSyncStore().deviceId,
-        timestamp,
-        payload: {
-          uuid: timer.uuid,
-          start: fields.start,
-          end: fields.end,
-          description: fields.description,
-          positive: fields.positive,
-        },
+      useSyncStore().emitEvent("timer_updated", timer.uuid, timestamp, {
+        uuid: timer.uuid,
+        start: fields.start,
+        end: fields.end,
+        description: fields.description,
+        positive: fields.positive,
       });
     };
 
@@ -620,14 +583,7 @@ export const useTimerStore = defineStore(
       }
       invalidateForTimer({ id: timer.id, start: timer.start, end: timer.end });
       timers.value = timers.value.filter((t) => t.uuid !== uuid);
-      useSyncStore().enqueueEvent({
-        id: crypto.randomUUID(),
-        type: "timer_removed",
-        entityId: timer.uuid,
-        deviceId: useSyncStore().deviceId,
-        timestamp: Date.now(),
-        payload: { uuid: timer.uuid },
-      });
+      useSyncStore().emitEvent("timer_removed", timer.uuid, Date.now(), { uuid: timer.uuid });
     };
 
     const hasActiveDescendant = (id: string) => {
@@ -668,7 +624,8 @@ export const useTimerStore = defineStore(
     // still-open-ended list of positive records for `id` and its descendants, each clipped to the
     // window and with any overlapping negative (pause) timer already carved out - callers decide
     // separately whether to sum these raw (double-counting concurrent records) or merge them into
-    // a deduped union.
+    // a deduped union. Also reports whether any window timer was still open (end === 0), which
+    // getDayAggregate uses to decide whether a result is safe to cache long-term.
     //
     // Filtering (and clipping) by overlap rather than by `t.start` alone matters for a timer that
     // was already running when rangeStart hit (e.g. one still open from before the 04:00 day
@@ -676,14 +633,13 @@ export const useTimerStore = defineStore(
     // and correspondingly must NOT contribute the portion outside this window - otherwise that
     // time either vanishes (excluded from every day) or gets double-counted (attributed both to
     // the day it started on and the day it's viewed from).
-    // Like getRecordsInRange, but also reports whether any window timer was still open
-    // (end === 0) - used by getDayAggregate to decide whether a result is safe to cache long-term.
+    //
     // `nowValue`/`candidates` are explicit parameters (defaulting to the live clock/full history)
     // rather than closed over, mirroring timerOverlapsRange's own convention: it lets a past day's
     // total be computed with a fixed sentinel instead of the live clock (so it creates no reactive
     // dependency on it) and lets today's total be computed over a small pre-filtered candidate list
     // instead of the entire lifetime history (see todaysTimers).
-    const getRecordsInRangeWithMeta = (
+    const getRecordsInRange = (
       id: string,
       rangeStart: number,
       rangeEnd: number,
@@ -733,27 +689,6 @@ export const useTimerStore = defineStore(
       return { records, touchesOpenTimer };
     };
 
-    // Core interval-subtraction step, bounded to an arbitrary [rangeStart, rangeEnd) window so it
-    // can serve both the live "today" total and a fixed historical day's report. Returns the
-    // still-open-ended list of positive records for `id` and its descendants, each clipped to the
-    // window and with any overlapping negative (pause) timer already carved out - callers decide
-    // separately whether to sum these raw (double-counting concurrent records) or merge them into
-    // a deduped union.
-    //
-    // Filtering (and clipping) by overlap rather than by `t.start` alone matters for a timer that
-    // was already running when rangeStart hit (e.g. one still open from before the 04:00 day
-    // cutoff): it must contribute its portion inside this window even though it started earlier,
-    // and correspondingly must NOT contribute the portion outside this window - otherwise that
-    // time either vanishes (excluded from every day) or gets double-counted (attributed both to
-    // the day it started on and the day it's viewed from).
-    const getRecordsInRange = (
-      id: string,
-      rangeStart: number,
-      rangeEnd: number,
-      nowValue: number = now.value,
-      candidates: fhtTimer[] = timers.value,
-    ) => getRecordsInRangeWithMeta(id, rangeStart, rangeEnd, nowValue, candidates).records;
-
     // Sum of each record's own duration, so two timers tracked concurrently (e.g. on unrelated
     // tags) each contribute their full length even though they cover the same wall-clock time.
     const sumRawTime = (records: Array<{ start: number; end: number }>) =>
@@ -783,7 +718,7 @@ export const useTimerStore = defineStore(
       rangeEnd: number,
       nowValue: number = now.value,
       candidates: fhtTimer[] = timers.value,
-    ) => unionTime(getRecordsInRange(id, rangeStart, rangeEnd, nowValue, candidates));
+    ) => unionTime(getRecordsInRange(id, rangeStart, rangeEnd, nowValue, candidates).records);
 
     // "Today" only - always computed live over the small todaysTimers candidate list (see its own
     // comment), never routed through the day-aggregate cache below (today is never cache-eligible).
@@ -793,12 +728,6 @@ export const useTimerStore = defineStore(
     const isDayCacheEligible = (dayNumber: number) =>
       todayDayNumber.value - dayNumber >= OLD_DAY_CACHE_THRESHOLD_DAYS;
 
-    // The single cache-aware entry point for "total time for `id` on day `dayNumber`". Days more
-    // than OLD_DAY_CACHE_THRESHOLD_DAYS in the past are served from dayTagAggregateCache once
-    // computed; today and recent days always compute live so they reflect the running clock and
-    // in-progress edits immediately. A result is only ever cached when nothing contributing to it
-    // was still open at compute time (see `volatile` on DayTagAggregate) - an open timer's true
-    // contribution to a day isn't known until it closes.
     // The actual from-scratch computation getDayAggregate falls back to on a cache miss - split
     // out so a dev-mode cache hit can also call it, to cross-check that the cache never disagrees
     // with a fresh scan (see the DEV branch in getDayAggregate below).
@@ -810,12 +739,7 @@ export const useTimerStore = defineStore(
       // current time - using a fixed sentinel here (rather than now.value) means this computation
       // never reads the live clock, so it creates no reactive dependency on it.
       const nowValue = isPast ? Number.MAX_SAFE_INTEGER : now.value;
-      const { records, touchesOpenTimer } = getRecordsInRangeWithMeta(
-        id,
-        rangeStart,
-        rangeEnd,
-        nowValue,
-      );
+      const { records, touchesOpenTimer } = getRecordsInRange(id, rangeStart, rangeEnd, nowValue);
       return {
         rawTime: sumRawTime(records),
         netTime: unionTime(records),
@@ -823,6 +747,12 @@ export const useTimerStore = defineStore(
       };
     };
 
+    // The single cache-aware entry point for "total time for `id` on day `dayNumber`". Days more
+    // than OLD_DAY_CACHE_THRESHOLD_DAYS in the past are served from dayTagAggregateCache once
+    // computed; today and recent days always compute live so they reflect the running clock and
+    // in-progress edits immediately. A result is only ever cached when nothing contributing to it
+    // was still open at compute time (see `volatile` on DayTagAggregate) - an open timer's true
+    // contribution to a day isn't known until it closes.
     const getDayAggregate = (id: string, dayNumber: number): DayTagAggregate => {
       const eligible = isDayCacheEligible(dayNumber);
       if (eligible) {
@@ -874,7 +804,7 @@ export const useTimerStore = defineStore(
       const nowValue = isPast ? Number.MAX_SAFE_INTEGER : now.value;
       const entries: Array<{ id: string; time: number }> = [];
 
-      const knownTagIds = new Set(tags.value.map((tag) => `${tag.parent}//${tag.name}`));
+      const knownTagIds = new Set(tags.value.map(pathOf));
       const parentOf = (id: string) => id.slice(0, id.lastIndexOf("//"));
 
       // A deleted id whose own tag never had a direct timer (only a deleted descendant did, e.g.
@@ -886,11 +816,9 @@ export const useTimerStore = defineStore(
       // though it's never a known tag: `parentOf("")` is also `""`, so treating it as a deleted
       // leaf would make it its own synthesized child, and `visit("")` would recurse into itself
       // forever.
+      const dayTimers = timers.value.filter((t) => timerOverlapsRange(t, start, end, nowValue));
       const deletedLeafIds = new Set(
-        timers.value
-          .filter((t) => timerOverlapsRange(t, start, end, nowValue))
-          .map((t) => t.id)
-          .filter((id) => id !== "" && !knownTagIds.has(id)),
+        dayTimers.map((t) => t.id).filter((id) => id !== "" && !knownTagIds.has(id)),
       );
       const deletedIds = new Set(deletedLeafIds);
       for (const id of deletedLeafIds) {
@@ -900,17 +828,19 @@ export const useTimerStore = defineStore(
           ancestor = parentOf(ancestor);
         }
       }
-      const earliestActivity = (id: string) => {
-        const starts = timers.value
-          .filter(
-            (t) => timerOverlapsRange(t, start, end, nowValue) && isSelfOrDescendant(t.id, id),
-          )
-          .map((t) => t.start);
-        return starts.length ? Math.min(...starts) : Infinity;
-      };
+      // Earliest start among the day's timers on each id or any of its descendants - computed in
+      // one pass (each timer credits its own id and every ancestor) so the sort below is a lookup,
+      // not a rescan of the day's timers per comparison.
+      const earliestStart = new Map<string, number>();
+      for (const t of dayTimers) {
+        for (const id of ancestorChainIds(t.id)) {
+          earliestStart.set(id, Math.min(earliestStart.get(id) ?? Infinity, t.start));
+        }
+      }
+      const earliestActivity = (id: string) => earliestStart.get(id) ?? Infinity;
 
       const visit = (parent: string) => {
-        const liveIds = getTags(parent).map((tag) => `${tag.parent}//${tag.name}`);
+        const liveIds = getTags(parent).map(pathOf);
         const deletedChildIds = [...deletedIds].filter((id) => parentOf(id) === parent);
         const children = [...liveIds, ...deletedChildIds].sort(
           (a, b) => earliestActivity(a) - earliestActivity(b),

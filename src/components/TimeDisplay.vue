@@ -9,7 +9,7 @@ const timeParts = computed(() => {
 
   if (seconds >= 86400) {
     const days = Math.floor(seconds / 86400);
-    output += `${days} days `;
+    output += `${days} ${days === 1 ? "day" : "days"} `;
   }
 
   const hours = Math.floor(seconds / 3600);

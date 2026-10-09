@@ -4,7 +4,7 @@ import { VueDraggable, type DraggableEvent } from "vue-draggable-plus";
 import { useTimerStore } from "../timerStore";
 import TagItem from "./TagItem.vue";
 import EditTag from "./EditTag.vue";
-import { tagName } from "../helpers";
+import { pathOf, tagName } from "../helpers";
 
 const store = useTimerStore();
 const props = defineProps<{ parent: string }>();
@@ -39,7 +39,7 @@ const onDragEnd = (event: DraggableEvent) => {
       @end="onDragEnd"
     >
       <TagItem v-for="tag in tags" :tag="tag" :key="tag.uuid">
-        <ListTags :parent="tag.parent + '//' + tag.name" />
+        <ListTags :parent="pathOf(tag)" />
       </TagItem>
     </VueDraggable>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useTimerStore } from "../timerStore";
+import { pathOf } from "../helpers";
 import type { fhtTag } from "../types";
 import ModalDialog from "./ModalDialog.vue";
 import IconButton from "./IconButton.vue";
@@ -13,9 +14,7 @@ const projectName = ref("");
 const projectTag = ref<fhtTag | null>(null);
 const taskName = ref("");
 
-const projectPath = computed(() =>
-  projectTag.value ? `${projectTag.value.parent}//${projectTag.value.name}` : "",
-);
+const projectPath = computed(() => (projectTag.value ? pathOf(projectTag.value) : ""));
 const tasks = computed(() => (projectTag.value ? store.getTags(projectPath.value) : []));
 const projectNameError = computed(() =>
   store.tagNameError("", projectName.value, projectTag.value?.uuid),
@@ -43,7 +42,7 @@ const addTask = () => {
 // store.removeTag() also clears store.modal as a side effect (it's written for the tag tree's
 // own delete-confirmation flow), which would otherwise silently close this whole wizard.
 const removeTask = (task: fhtTag) => {
-  store.removeTag(`${task.parent}//${task.name}`);
+  store.removeTag(pathOf(task));
   store.openModal("setup-wizard");
 };
 

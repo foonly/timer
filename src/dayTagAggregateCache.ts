@@ -17,7 +17,7 @@ export interface DayTagAggregate {
   // Union of the day's tracked intervals for this tag (and descendants), so concurrent tracking
   // isn't double-counted - matches what getTimeInRange returns.
   netTime: number;
-  // Sum of each tracked interval's own duration - matches what getRawTimeInRange returns.
+  // Sum of each tracked interval's own duration, counting concurrent tracking twice.
   rawTime: number;
   // True if any timer contributing to this total was still open (end === 0) when computed - such
   // a result is never written to the cache (see timerStore.ts's getDayAggregate).

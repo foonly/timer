@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { SyncEvent } from "./sync/events";
+import type { SyncEvent, SyncEventType } from "./sync/events";
 
 export type SyncStatus = "idle" | "syncing" | "offline" | "error";
 
@@ -35,6 +35,23 @@ export const useSyncStore = defineStore(
       pendingEvents.value.push(event);
     };
 
+    // Builds and queues an event, filling in the envelope fields every event shares.
+    const emitEvent = <T extends SyncEventType>(
+      type: T,
+      entityId: string,
+      timestamp: number,
+      payload: Extract<SyncEvent, { type: T }>["payload"],
+    ) => {
+      enqueueEvent({
+        id: crypto.randomUUID(),
+        type,
+        entityId,
+        deviceId: deviceId.value,
+        timestamp,
+        payload,
+      } as SyncEvent);
+    };
+
     // Called on every successful login/signup. Sync bookkeeping is per-account: the cursor is a
     // position in one account's event log, and pending events were queued for that account. So
     // switching to a different account starts over from scratch (cursor 0, fresh bootstrap of
@@ -62,6 +79,7 @@ export const useSyncStore = defineStore(
       accountEmail,
       syncStatus,
       enqueueEvent,
+      emitEvent,
       claimForAccount,
     };
   },

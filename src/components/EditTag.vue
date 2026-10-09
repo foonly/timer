@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTimerStore } from "../timerStore";
-import { isSelfOrDescendant } from "../helpers";
+import { isSelfOrDescendant, pathOf } from "../helpers";
 import ModalDialog from "./ModalDialog.vue";
 import { computed, ref } from "vue";
 
@@ -8,7 +8,7 @@ const store = useTimerStore();
 const props = defineProps<{ title: string; parent: string; id?: string }>();
 
 const existingTag = computed(() => {
-  return store.tags.find((tag) => `${tag.parent}//${tag.name}` === props.id);
+  return store.tags.find((tag) => pathOf(tag) === props.id);
 });
 
 const name = ref(existingTag.value?.name ?? "");
@@ -22,9 +22,9 @@ const parentOptions = computed(() => {
     return [];
   }
   return store.tags
-    .filter((tag) => !isSelfOrDescendant(`${tag.parent}//${tag.name}`, props.id!))
+    .filter((tag) => !isSelfOrDescendant(pathOf(tag), props.id!))
     .map((tag) => {
-      const path = `${tag.parent}//${tag.name}`;
+      const path = pathOf(tag);
       return { id: path, label: path.split("//").filter(Boolean).join(" › ") };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
@@ -63,7 +63,7 @@ const resetForm = () => {
   name.value = "";
   description.value = "";
   selectedParent.value = existingTag.value?.parent ?? "";
-  store.modal = "";
+  store.closeModal();
 };
 </script>
 
