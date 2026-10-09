@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -70,6 +71,25 @@ func (h *Handler) Push(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to store events", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	// seq comes from a BIGSERIAL, which is assigned at insert time, not commit time. Without this
+	// lock, two overlapping pushes for the same user could commit out of seq order: a pull landing
+	// in between would see the higher seq, advance its cursor past the lower one, and never see
+	// that event once it commits. Holding a per-user lock until commit serializes a user's pushes,
+	// so every seq they get is assigned after all of that user's earlier seqs are already visible.
+	// Pull filters by user_id, so ordering across different users doesn't matter (and they don't
+	// block each other, barring a harmless lock-key collision).
+	if _, err := tx.Exec(r.Context(), "SELECT pg_advisory_xact_lock($1)", pushLockKey(userID)); err != nil {
+		http.Error(w, "Failed to store events", http.StatusInternalServerError)
+		return
+	}
+
 	batch := &pgx.Batch{}
 	for _, e := range req.Events {
 		batch.Queue(
@@ -80,17 +100,25 @@ func (h *Handler) Push(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	br := h.DB.SendBatch(r.Context(), batch)
-	defer br.Close()
-
+	br := tx.SendBatch(r.Context(), batch)
 	accepted := 0
 	for range req.Events {
 		tag, err := br.Exec()
 		if err != nil {
+			_ = br.Close()
 			http.Error(w, "Failed to store events", http.StatusInternalServerError)
 			return
 		}
 		accepted += int(tag.RowsAffected())
+	}
+	if err := br.Close(); err != nil {
+		http.Error(w, "Failed to store events", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		http.Error(w, "Failed to store events", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -181,6 +209,12 @@ func (h *Handler) Pull(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(pullResponse{Events: events, Cursor: cursor, HasMore: hasMore})
+}
+
+// pushLockKey maps a user to the advisory-lock key Push serializes on: the first 8 bytes of the
+// user's UUID (random v4 bits, so collisions between users are negligible).
+func pushLockKey(userID uuid.UUID) int64 {
+	return int64(binary.BigEndian.Uint64(userID[:8]))
 }
 
 func parseInt64Query(r *http.Request, key string, def int64) (int64, error) {
