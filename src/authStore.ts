@@ -116,6 +116,7 @@ export const useAuthStore = defineStore(
         token.value = data.token;
         email.value = emailInput;
         authStatus.value = "logged-in";
+        useSyncStore().claimForAccount(emailInput);
         bootstrapSyncIfNeeded();
         return true;
       } catch (err) {
@@ -160,15 +161,28 @@ export const useAuthStore = defineStore(
         const res = await fetch("/api/auth/me", {
           headers: { Authorization: `Bearer ${token.value}` },
         });
-        if (!res.ok) {
+        if (res.status === 401) {
           token.value = null;
           email.value = null;
           authStatus.value = "logged-out";
           return;
         }
+        if (!res.ok) {
+          // A server-side failure says nothing about whether the session is still valid - keep
+          // the token, same as the network-error case below.
+          authStatus.value = "logged-in";
+          console.error(`Session check failed: ${res.status}`);
+          return;
+        }
         const data = (await res.json()) as { email: string };
         email.value = data.email;
         authStatus.value = "logged-in";
+        // Backfill for state from before the sync store tracked its account. Only fills in an
+        // unknown owner (never resets), since this is the account the state was already used with.
+        const syncStore = useSyncStore();
+        if (syncStore.accountEmail === null) {
+          syncStore.accountEmail = data.email;
+        }
       } catch (err) {
         // Network error, not an invalid session - keep the token and let the sync engine retry.
         authStatus.value = "logged-in";

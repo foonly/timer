@@ -23,6 +23,10 @@ export const useSyncStore = defineStore(
     const lastSyncedAt = ref<number | null>(null);
     // Guards the one-time "upload everything I already have locally" snapshot on first login.
     const hasBootstrapped = ref(false);
+    // The account pendingEvents/pullCursor/hasBootstrapped above belong to. null means unknown
+    // (state from before this was tracked) - treated as "same account" so upgrading doesn't
+    // trigger a full re-bootstrap.
+    const accountEmail = ref<string | null>(null);
 
     // Transient - not persisted, recomputed fresh on every load.
     const syncStatus = ref<SyncStatus>("idle");
@@ -31,20 +35,44 @@ export const useSyncStore = defineStore(
       pendingEvents.value.push(event);
     };
 
+    // Called on every successful login/signup. Sync bookkeeping is per-account: the cursor is a
+    // position in one account's event log, and pending events were queued for that account. So
+    // switching to a different account starts over from scratch (cursor 0, fresh bootstrap of
+    // local data) instead of pushing the previous account's queue and skipping the new account's
+    // history. Logging back into the same account keeps everything as-is.
+    const claimForAccount = (email: string) => {
+      if (accountEmail.value !== null && accountEmail.value !== email) {
+        pendingEvents.value = [];
+        pullCursor.value = 0;
+        lastSyncedAt.value = null;
+        hasBootstrapped.value = false;
+      }
+      accountEmail.value = email;
+    };
+
     return {
       deviceId,
       pendingEvents,
       pullCursor,
       lastSyncedAt,
       hasBootstrapped,
+      accountEmail,
       syncStatus,
       enqueueEvent,
+      claimForAccount,
     };
   },
   {
     persist: {
       key: "timer-sync",
-      paths: ["deviceId", "pendingEvents", "pullCursor", "lastSyncedAt", "hasBootstrapped"],
+      paths: [
+        "deviceId",
+        "pendingEvents",
+        "pullCursor",
+        "lastSyncedAt",
+        "hasBootstrapped",
+        "accountEmail",
+      ],
     },
   },
 );

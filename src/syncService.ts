@@ -39,7 +39,7 @@ async function pushPending(): Promise<void> {
   syncStore.pendingEvents = syncStore.pendingEvents.filter((e) => !pushedIds.has(e.id));
 }
 
-async function pullNew(): Promise<void> {
+export async function pullNew(): Promise<void> {
   const syncStore = useSyncStore();
   const authStore = useAuthStore();
   const timerStore = useTimerStore();
@@ -58,7 +58,19 @@ async function pullNew(): Promise<void> {
     }
     const data = (await res.json()) as { events: unknown[]; hasMore: boolean };
     for (const raw of data.events) {
-      const event = pulledSyncEventSchema.parse(raw);
+      const parsed = pulledSyncEventSchema.safeParse(raw);
+      if (!parsed.success) {
+        // Skip it rather than throw: the cursor would otherwise never get past this event, and
+        // every later sync cycle would fail on it again, forever. Still advance the cursor past
+        // it when its seq is readable.
+        console.warn("Sync: skipping malformed event", raw, parsed.error);
+        const seq = (raw as { seq?: unknown } | null)?.seq;
+        if (typeof seq === "number" && seq > syncStore.pullCursor) {
+          syncStore.pullCursor = seq;
+        }
+        continue;
+      }
+      const event = parsed.data;
       timerStore.applyRemoteEvent(event);
       if (event.seq > syncStore.pullCursor) {
         syncStore.pullCursor = event.seq;
