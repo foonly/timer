@@ -4,10 +4,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 
@@ -43,27 +50,65 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.Email == "" || req.Password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+	req.Email = strings.TrimSpace(req.Email)
+	if msg := validateSignup(req); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		log.Printf("signup: hashing password: %v", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
 	var userID uuid.UUID
 	err = h.DB.QueryRow(r.Context(),
-		"INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id",
+		// lower() in SQL rather than strings.ToLower, so it can't disagree with the
+		// users_email_normalized CHECK constraint's own lower() on non-ASCII characters.
+		"INSERT INTO users (email, password_hash) VALUES (lower($1), $2) RETURNING id",
 		req.Email, string(hash)).Scan(&userID)
 	if err != nil {
-		http.Error(w, "Email already exists", http.StatusConflict)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+			http.Error(w, "Email already exists", http.StatusConflict)
+			return
+		}
+		log.Printf("signup: inserting user: %v", err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 
 	h.createSession(w, r, userID, http.StatusCreated)
+}
+
+// uniqueViolation is Postgres' SQLSTATE for a unique constraint violation.
+const uniqueViolation = "23505"
+
+const (
+	minPasswordLength = 8
+	// bcrypt only uses the first 72 bytes of a password and GenerateFromPassword rejects anything
+	// longer, so cap it up front with a clear message instead of a 500.
+	maxPasswordBytes = 72
+	// The longest an address can be in practice (RFC 5321 path limit).
+	maxEmailLength = 254
+)
+
+// validateSignup returns a user-facing reason the signup request is invalid, or "" if it's fine.
+// Only applied at signup, so existing accounts with older, shorter passwords can still log in.
+func validateSignup(req credentialsRequest) string {
+	switch {
+	case req.Email == "" || req.Password == "":
+		return "Email and password are required"
+	case len(req.Email) > maxEmailLength || !strings.Contains(req.Email, "@"):
+		return "Please enter a valid email address"
+	case utf8.RuneCountInString(req.Password) < minPasswordLength:
+		return fmt.Sprintf("Password must be at least %d characters", minPasswordLength)
+	case len(req.Password) > maxPasswordBytes:
+		return fmt.Sprintf("Password must be at most %d bytes", maxPasswordBytes)
+	}
+	return ""
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -75,11 +120,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var userID uuid.UUID
 	var hash string
-	err := h.DB.QueryRow(r.Context(), "SELECT id, password_hash FROM users WHERE email = $1", req.Email).
+	err := h.DB.QueryRow(r.Context(),
+		"SELECT id, password_hash FROM users WHERE email = lower($1)", strings.TrimSpace(req.Email)).
 		Scan(&userID, &hash)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		// Same generic message as a bad password, to avoid leaking whether an email is registered.
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		log.Printf("login: looking up user: %v", err)
+		http.Error(w, "Server error", http.StatusInternalServerError)
 		return
 	}
 

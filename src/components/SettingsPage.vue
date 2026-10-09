@@ -52,7 +52,14 @@ const submit = async () => {
             </label>
             <label>
               Password
-              <input type="password" v-model="password" placeholder="Password" required />
+              <input
+                type="password"
+                v-model="password"
+                placeholder="Password"
+                required
+                :minlength="mode === 'signup' ? 8 : undefined"
+                :autocomplete="mode === 'signup' ? 'new-password' : 'current-password'"
+              />
             </label>
           </div>
           <p class="auth-error" v-if="authStore.authStatus === 'error'">

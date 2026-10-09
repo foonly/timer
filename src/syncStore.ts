@@ -41,7 +41,10 @@ export const useSyncStore = defineStore(
     // local data) instead of pushing the previous account's queue and skipping the new account's
     // history. Logging back into the same account keeps everything as-is.
     const claimForAccount = (email: string) => {
-      if (accountEmail.value !== null && accountEmail.value !== email) {
+      // Compared normalized: the server matches emails case-insensitively, and an accountEmail
+      // persisted before that was stored exactly as typed.
+      const normalize = (e: string) => e.trim().toLowerCase();
+      if (accountEmail.value !== null && normalize(accountEmail.value) !== normalize(email)) {
         pendingEvents.value = [];
         pullCursor.value = 0;
         lastSyncedAt.value = null;

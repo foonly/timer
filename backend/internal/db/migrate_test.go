@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
@@ -164,5 +165,49 @@ func TestEmbeddedMigrationsApply(t *testing.T) {
 		if !tableExists(t, pool, table) {
 			t.Fatalf("table %s missing", table)
 		}
+	}
+}
+
+// Upgrading a database created before 000002 lowercases existing emails, and from then on the
+// constraint rejects any non-normalized email.
+func TestNormalizeEmailsMigration(t *testing.T) {
+	pool := setupPool(t)
+	ctx := context.Background()
+
+	init, err := fs.ReadFile(migrations.FS, "000001_init.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := RunMigrations(ctx, pool, fstest.MapFS{"000001_init.up.sql": {Data: init}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx,
+		"INSERT INTO users (email, password_hash) VALUES (' Mixed@Case.com ', 'x'), ('lower@case.com', 'x')"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RunMigrations(ctx, pool, migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	var emails []string
+	rows, err := pool.Query(ctx, "SELECT email FROM users ORDER BY email")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var e string
+		if err := rows.Scan(&e); err != nil {
+			t.Fatal(err)
+		}
+		emails = append(emails, e)
+	}
+	rows.Close()
+	if fmt.Sprint(emails) != "[lower@case.com mixed@case.com]" {
+		t.Fatalf("emails = %v", emails)
+	}
+
+	if _, err := pool.Exec(ctx,
+		"INSERT INTO users (email, password_hash) VALUES ('Upper@Case.com', 'x')"); err == nil {
+		t.Fatal("inserting a non-normalized email succeeded, want a check violation")
 	}
 }

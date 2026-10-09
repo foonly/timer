@@ -109,14 +109,17 @@ export const useAuthStore = defineStore(
         });
         if (!res.ok) {
           authStatus.value = "error";
-          authError.value = errorMessageFor(res.status);
+          // A 400 carries a specific, user-facing reason (e.g. password too short) as plain text.
+          const reason = res.status === 400 ? (await res.text()).trim() : "";
+          authError.value = reason ? `${reason}.` : errorMessageFor(res.status);
           return false;
         }
         const data = (await res.json()) as { token: string };
         token.value = data.token;
-        email.value = emailInput;
+        // Shown as the server stores it (lowercased, trimmed), not as typed.
+        email.value = emailInput.trim().toLowerCase();
         authStatus.value = "logged-in";
-        useSyncStore().claimForAccount(emailInput);
+        useSyncStore().claimForAccount(email.value);
         bootstrapSyncIfNeeded();
         return true;
       } catch (err) {

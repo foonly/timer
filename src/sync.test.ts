@@ -51,6 +51,31 @@ describe("checkSession", () => {
   });
 });
 
+describe("login errors", () => {
+  it("shows the server's reason for a 400", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("Password must be at least 8 characters\n", { status: 400 }),
+    );
+    const auth = useAuthStore();
+    expect(await auth.signup("a@example.com", "short")).toBe(false);
+    expect(auth.authError).toBe("Password must be at least 8 characters.");
+  });
+
+  it("falls back to a generic message for a 400 without a body", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 400 }));
+    const auth = useAuthStore();
+    await auth.signup("a@example.com", "short");
+    expect(auth.authError).toBe("Something went wrong - please try again.");
+  });
+
+  it("maps a 409 to the duplicate-account message", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(409));
+    const auth = useAuthStore();
+    await auth.signup("a@example.com", "password");
+    expect(auth.authError).toBe("An account with that email already exists.");
+  });
+});
+
 describe("login account switching", () => {
   const seedSyncState = (accountEmail: string | null) => {
     const sync = useSyncStore();
@@ -96,6 +121,15 @@ describe("login account switching", () => {
     await useAuthStore().login("a@example.com", "pw");
     expect(sync.pullCursor).toBe(42);
     expect(sync.pendingEvents).toHaveLength(1);
+  });
+
+  it("treats a differently-cased email as the same account", async () => {
+    const sync = seedSyncState("Niklas@Example.com");
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { token: "t" }));
+    await useAuthStore().login(" niklas@example.COM ", "pw");
+    expect(sync.pullCursor).toBe(42);
+    expect(sync.pendingEvents).toHaveLength(1);
+    expect(useAuthStore().email).toBe("niklas@example.com");
   });
 
   it("keeps sync state when the previous account is unknown", async () => {
